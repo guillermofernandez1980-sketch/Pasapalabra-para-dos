@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#0f1220" />
-<title>PASAPALABRA — V22.5 (fix CONTINUAR)</title>
+<title>PASAPALABRA — V22.6 (mantener turno + saltar letra)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b0f24;--panel:#141a3d;--ink:#eef2fb;--muted:#9aa3b2;--brand:#7c5cff;--ok:#1ec28b;--bad:#ff5d6c;--waiting:#25306a;--accent:#ffd166;--ring1:#1b214f;--ring2:#0a0f2e}
@@ -32,7 +32,6 @@
   .stats{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .stat{background:#0f1542;border:1px solid #28327a;padding:6px 10px;border-radius:10px;font-size:13px}
   .stat strong{font-size:15px}
-  /* ROSCO */
   .rosco-wrap{position:relative;aspect-ratio:1/1;max-width:360px;margin:12px auto;border-radius:50%;
     background:radial-gradient(circle at 50% 50%, #12194a 57%, transparent 58%), radial-gradient(circle at 50% 50%, var(--ring1) 64%, var(--ring2) 66%, transparent 67%);
     box-shadow:0 0 0 2px #202a70 inset,0 0 38px rgba(124,92,255,.22) inset;overflow:hidden}
@@ -56,14 +55,12 @@
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .footer{display:flex;justify-content:space-between;gap:10px;margin-top:10px;color:#9aa3b2;font-size:12px}
   .winner{padding:10px 12px;border-radius:12px;background:#0e1330;border:1px solid #2b3378;margin-top:10px}
-  /* Overlays */
   .overlay{position:fixed;inset:0;background:rgba(6,10,26,.75);display:none;place-items:center;z-index:60;padding:20px}
   .overlay .box{background:#0c1231;border:1px solid #2b3378;border-radius:16px;padding:18px 20px;text-align:center;max-width:420px}
   .overlay .box h3{margin:0 0 8px 0}
   .count{font-size:72px;font-weight:900;letter-spacing:.05em}
   .fab{position:fixed;right:16px;bottom:16px;width:64px;height:64px;border-radius:50%;border:0;background:var(--brand);color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 8px 25px rgba(0,0,0,.35);z-index:55}
   .fab:active{transform:scale(.98)}
-  /* Instrucciones */
   details.help{background:#0e1440;border:1px solid #2a357a;border-radius:16px;padding:8px 12px;margin:10px 0}
   details.help summary{cursor:pointer;font-weight:800}
   details.help p{margin:.35em 0}
@@ -74,7 +71,7 @@
     <div class="mast">
       <h1>PASAPALABRA</h1>
       <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
-        <span class="badge">V22.5 · móvil</span>
+        <span class="badge">V22.6 · móvil</span>
         <button class="btn btn-ghost" id="btnSettings">⚙️ Ajustes</button>
         <button class="btn btn-ghost" id="btnNew">Nuevo rosco</button>
       </div>
@@ -82,12 +79,10 @@
 
     <details class="help">
       <summary>📖 Instrucciones (toca para ver)</summary>
-      <p>• Dos jugadores, cada uno con su rosco.</p>
-      <p>• Te leo la pista: “<em>Con la…</em>”. Si la sabes, escribe y pulsa <strong>Responder</strong>.</p>
-      <p>• Si no la sabes: <strong>Pasapalabra</strong>. Y si <strong>fallas</strong>, también: se abre un <em>respiro</em> de cambio de turno; no corre el tiempo hasta tocar <strong>Continuar</strong>.</p>
-      <p>• Para no perder tiempo al teclear, usa <strong>✍️ Escribir (pausar)</strong>.</p>
-      <p>• <strong>Pausar</strong> detiene todo el juego.</p>
-      <p>• Responder por <strong>micrófono</strong>: Chrome Android + HTTPS (actívalo en <em>Ajustes</em>).</p>
+      <p>• Mantienes el <strong>turno mientras aciertas</strong>. Solo cambias al otro si <strong>fallas</strong> o dices <strong>pasapalabra</strong>.</p>
+      <p>• Si pasas o fallas una letra, en tu siguiente turno <strong>sigues por la siguiente</strong> (no repites la misma). Al cerrar la Z, vuelves por las <em>pendientes</em> en su orden.</p>
+      <p>• Usa <strong>✍️ Escribir (pausar)</strong> para congelar tu tiempo mientras tecleas.</p>
+      <p>• <strong>Pausar</strong> detiene todo el juego. <strong>Micrófono</strong> (Chrome Android + HTTPS) en <em>Ajustes</em>.</p>
       <button class="btn btn-ghost" id="btnReadHelp">🔊 Leer instrucciones</button>
     </details>
 
@@ -195,7 +190,7 @@
   function lev(a,b){const m=a.length,n=b.length,dp=new Array(n+1);for(let j=0;j<=n;j++)dp[j]=j;for(let i=1;i<=m;i++){let p=dp[0];dp[0]=i;for(let j=1;j<=n;j++){const t=dp[j],cost=(a[i-1]===b[j-1])?0:1;dp[j]=Math.min(dp[j]+1,dp[j-1]+1,p+cost);p=t;}}return dp[n];}
   const same=(a,b)=> (a===b) || (state.fuzzy && lev(a,b)<=1 && Math.max(a.length,b.length)>=5);
 
-  // Banco (recortado)
+  /* Banco (recortado para demo) */
   const BANK={A:[{a:"abstinencia",c:"Privación voluntaria de consumir o hacer algo, especialmente alcohol o drogas.",d:7},{a:"anacronismo",c:"Error por situar algo fuera de su época.",d:7},{a:"arcano",c:"Secreto o cosa misteriosa de difícil comprensión.",d:7}],
   B:[{a:"barometro",c:"Aparato que mide la presión atmosférica.",d:7},{a:"bitacora",c:"Cuaderno de navegación; por extensión, diario o blog.",d:7},{a:"bonanza",c:"Período de prosperidad o calma.",d:7}],
   C:[{a:"cautela",c:"Actitud de prudencia para evitar riesgos.",d:7},{a:"catarata",c:"Salto de agua grande; también opacidad del cristalino.",d:7},{a:"cisma",c:"División o rompimiento en una organización.",d:7}],
@@ -222,7 +217,7 @@
   Y:[{a:"yodo",c:"Elemento químico usado como antiséptico en solución.",d:7},{a:"yegua",c:"Hembra del caballo.",d:7},{a:"yermo",c:"Tierra inculta o despoblada.",d:7}],
   Z:[{a:"zigzag",c:"Línea quebrada formada por segmentos alternos.",d:7},{a:"zarcillo",c:"Tallo fino con que se agarran algunas plantas trepadoras.",d:9},{a:"zoquete",c:"Persona torpe o ruda.",d:7}]};
 
-  /* TTS */
+  /* Voz (TTS) */
   function speak(text){
     try{
       if(!state.tts||!('speechSynthesis'in window)||state.paused||state.turnBreak) return;
@@ -259,29 +254,59 @@
     return rec;
   }
 
-  /* Roscos */
-  function makeRoscos(){ const A=[],B=[]; LETTERS.forEach(L=>{const pool=BANK[L];
-    let picks=[...pool]; if(picks.length<2) picks=picks.concat(pool[0]); picks=pick(2,picks);
-    if(picks[0]===picks[1]) picks[1]=pool[(pool.indexOf(picks[0])+1)%pool.length];
-    A.push({letter:L,clue:picks[0].c,answer:picks[0].a,diff:picks[0].d,status:'pending'});
-    B.push({letter:L,clue:picks[1].c,answer:picks[1].a,diff:picks[1].d,status:'pending'}); });
-    ensureHard(A); ensureHard(B); return {A,B}; }
-  function ensureHard(r){ for(let i=0;i<r.length&&r.filter(x=>x.diff===9).length<5;i++){ const L=r[i].letter, hp=BANK[L].filter(x=>x.d===9);
-    if(hp.length){ const p=hp[Math.floor(Math.random()*hp.length)]; r[i].clue=p.c; r[i].answer=p.a; r[i].diff=9; } } }
+  /* Utilidades de índice */
+  function nextPending(side, fromIdx){
+    const n=state.rosco[side].length;
+    for(let k=1;k<=n;k++){
+      const j=(fromIdx + k) % n;
+      if(state.rosco[side][j].status==='pending') return j;
+    }
+    return -1; // sin pendientes
+  }
+  function anyPending(side){ return state.rosco[side].some(x=>x.status==='pending'); }
 
-  /* Dibujo del aro */
-  function ringLayout(el,side){ el.innerHTML=''; const n=state.rosco[side].length, r=44;
-    for(let i=0;i<n;i++){ const it=state.rosco[side][i], a=(i/n)*Math.PI*2-Math.PI/2, x=50+Math.cos(a)*r, y=50+Math.sin(a)*r;
+  /* Generar roscos */
+  function makeRoscos(){
+    const A=[],B=[];
+    LETTERS.forEach(L=>{
+      const pool=BANK[L];
+      let picks=[...pool]; if(picks.length<2) picks=picks.concat(pool[0]); picks=pick(2,picks);
+      if(picks[0]===picks[1]) picks[1]=pool[(pool.indexOf(picks[0])+1)%pool.length];
+      A.push({letter:L,clue:picks[0].c,answer:picks[0].a,diff:picks[0].d,status:'pending'});
+      B.push({letter:L,clue:picks[1].c,answer:picks[1].a,diff:picks[1].d,status:'pending'});
+    });
+    ensureHard(A); ensureHard(B);
+    return {A,B};
+  }
+  function ensureHard(r){
+    for(let i=0;i<r.length&&r.filter(x=>x.diff===9).length<5;i++){
+      const L=r[i].letter, hp=BANK[L].filter(x=>x.d===9);
+      if(hp.length){ const p=hp[Math.floor(Math.random()*hp.length)];
+        r[i].clue=p.c; r[i].answer=p.a; r[i].diff=9;
+      }
+    }
+  }
+
+  /* Pintado */
+  function ringLayout(el,side){
+    el.innerHTML='';
+    const n=state.rosco[side].length, r=44;
+    for(let i=0;i<n;i++){
+      const it=state.rosco[side][i], a=(i/n)*Math.PI*2-Math.PI/2, x=50+Math.cos(a)*r, y=50+Math.sin(a)*r;
       const d=document.createElement('div'); d.className='dot'; d.dataset.letter=it.letter; d.style.left=x+'%'; d.style.top=y+'%';
       if(it.status==='ok') d.classList.add('ok'); else if(it.status==='bad') d.classList.add('bad');
-      if(i===state.idx[side]&&state.active===side) d.classList.add('active'); el.appendChild(d); } }
+      if(i===state.idx[side]&&state.active===side) d.classList.add('active');
+      el.appendChild(d);
+    }
+  }
   function render(){
     ringLayout($('#rA'),'A'); ringLayout($('#rB'),'B');
     ['A','B'].forEach(s=>{
       $(s==='A'?'#aOK':'#bOK').textContent=state.rosco[s].filter(x=>x.status==='ok').length;
       $(s==='A'?'#aBAD':'#bBAD').textContent=state.rosco[s].filter(x=>x.status==='bad').length;
       $(s==='A'?'#aPEN':'#bPEN').textContent=state.rosco[s].filter(x=>x.status==='pending').length;
-      $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]); });
+      $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]);
+    });
     $('#btnMic').disabled=!state.stt||state.paused||state.turnBreak;
     ['#btnAnswer','#btnPass','#btnGiveUp'].forEach(id=>$(id).disabled=state.paused||state.turnBreak);
     $('#btnPause').textContent=state.paused?'Reanudar':'Pausar';
@@ -293,55 +318,100 @@
   }
 
   function labelFor(L){ if(L==='Ñ')return'Contiene eñe'; if(L==='X')return'Contiene equis'; if(L==='Q')return'Con la cu'; if(L==='Y')return'Con la ye'; return `Con la ${L.toLowerCase()}`; }
-  function setClue(){ const s=state.active, i=state.idx[s]; $('#turnTag').textContent=`Turno: Jugador ${s}`; if(i===-1){switchTurn();return;}
-    const it=state.rosco[s][i]; const text=`${labelFor(it.letter)}: ${it.clue}`; $('#clue').textContent=text; ringLayout($(state.active==='A'?'#rA':'#rB'),s); speak(text); }
+  function setClue(){
+    const s=state.active, i=state.idx[s];
+    $('#turnTag').textContent=`Turno: Jugador ${s}`;
+    if(i===-1){ // este jugador no tiene pendientes
+      switchTurn();
+      return;
+    }
+    const it=state.rosco[s][i];
+    const text=`${labelFor(it.letter)}: ${it.clue}`;
+    $('#clue').textContent=text;
+    ringLayout($(state.active==='A'?'#rA':'#rB'),s);
+    speak(text);
+  }
 
   /* Cuenta atrás */
-  function startCountdown(then){ if(state.counting) return; state.counting=true; $('#ovCount').style.display='grid';
+  function startCountdown(then){
+    if(state.counting) return; state.counting=true;
+    $('#ovCount').style.display='grid';
     let n=3; $('#countNum').textContent=n; if(state.tts) speak(String(n));
-    const id=setInterval(()=>{ n--; if(n>0){ $('#countNum').textContent=n; if(state.tts) speak(String(n)); }
-      else{ clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then(); } },1000); }
+    const id=setInterval(()=>{
+      n--; if(n>0){ $('#countNum').textContent=n; if(state.tts) speak(String(n)); }
+      else { clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then(); }
+    },1000);
+  }
 
-  function start(){ if(state.running||state.finished) return;
+  function start(){
+    if(state.running||state.finished) return;
     state.running=true; state.paused=false; state.turnBreak=false;
     ['#btnAnswer','#btnPass','#btnGiveUp'].forEach(id=>$(id).disabled=false);
-    $('#answer').focus(); if(state.stt&&!state.recognizer) state.recognizer=initSTT();
+    $('#answer').focus();
+    if(state.stt&&!state.recognizer) state.recognizer=initSTT();
     if(state.timer) clearInterval(state.timer);
-    state.timer=setInterval(()=>{ if(!state.running||state.paused||state.typingHold||state.turnBreak) return;
+    state.timer=setInterval(()=>{
+      if(!state.running||state.paused||state.typingHold||state.turnBreak) return;
       const s=state.active;
-      if(state.time[s]>0){ state.time[s]-=1; $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]); if(state.time[s]===0){switchTurn();} }
-      if(state.time.A===0 && state.time.B===0) endGame(); },1000);
-    setClue(); }
+      if(state.time[s]>0){
+        state.time[s]-=1; $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]);
+        if(state.time[s]===0){ switchTurn(); }
+      }
+      if( (state.time.A===0 && state.time.B===0) || (state.idx.A===-1 && state.idx.B===-1) ){
+        endGame();
+      }
+    },1000);
+    setClue();
+  }
 
-  function pauseToggle(force){ const want=typeof force==='boolean'?force:!state.paused;
+  function pauseToggle(force){
+    const want=(typeof force==='boolean')? force : !state.paused;
     state.paused=want; $('#ovPause').style.display=state.paused?'grid':'none';
     try{ if(state.paused){ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); } }catch(e){}
-    render(); }
+    render();
+  }
   $('#btnResume').onclick=()=>pauseToggle(false);
 
-  function toggleTypingHold(on){ const next=typeof on==='boolean'?on:!state.typingHold; state.typingHold=next;
-    if(next){ try{ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); }catch(e){} $('#answer').focus(); }
-    render(); }
+  function toggleTypingHold(on){
+    const next=(typeof on==='boolean')? on : !state.typingHold;
+    state.typingHold=next;
+    if(next){
+      try{ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); }catch(e){}
+      $('#answer').focus();
+    }
+    render();
+  }
 
-  function switchTurn(){ const s=state.active;
-    state.idx[s]=state.rosco[s].findIndex(x=>x.status==='pending');
-    state.active=(s==='A')?'B':'A';
-    state.idx[state.active]=state.rosco[state.active].findIndex(x=>x.status==='pending');
-    setClue(); }
+  /* Cambiar de jugador, saltando quien no pueda jugar */
+  function switchTurn(){
+    let tries=0;
+    do{
+      state.active = (state.active==='A') ? 'B' : 'A';
+      const s=state.active;
+      if(state.time[s]===0 || state.idx[s]===-1){
+        tries++;
+        if(tries>2){ endGame(); return; }
+        continue;
+      }
+      break;
+    }while(true);
+    setClue();
+  }
 
   function vib(ms=40){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
 
   /* Break común (pasapalabra o fallo) */
   function startBreak(kind){ // 'pass' | 'fail'
     state.turnBreak=true; render();
-    const title = (kind==='pass') ? 'Pasapalabra' : 'Fallo';
-    $('#brTitle').textContent = title;
-    $('#brText').textContent = 'Cambio de turno. Respira…';
+    const title=(kind==='pass')?'Pasapalabra':'Fallo';
+    $('#brTitle').textContent=title;
+    $('#brText').textContent='Cambio de turno. Respira…';
     $('#ovBreak').style.display='grid';
     try{ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); }catch(e){}
     if(state.tts){ speak(`¡${title}!`); } else { (kind==='pass'? ding : buzz)(); }
   }
 
+  /* Responder */
   function submitAnswer(){
     if(!state.running||state.finished) return;
     const s=state.active, i=state.idx[s]; if(i===-1){ switchTurn(); return; }
@@ -353,39 +423,86 @@
     it.status = ok ? 'ok' : 'bad';
     if(ok) vib(30); else vib([20,30,20]);
     render();
+
+    // ¿Ha completado todo bien?
     if(state.rosco[s].every(x=>x.status==='ok')){ endGame({forceWinner:s,reason:'completo'}); return; }
-    if(ok){ switchTurn(); } else { startBreak('fail'); }
+
+    if(ok){
+      // Mantiene el turno y avanza a la siguiente pendiente
+      const next = nextPending(s, i);
+      state.idx[s] = next; // -1 si no quedan pendientes
+      if(next===-1){ // no quedan pendientes para este jugador: pasamos al otro sin overlay
+        switchTurn();
+      }else{
+        setClue();
+      }
+    }else{
+      // Fallo: cambia el turno y esa letra ya no se vuelve a preguntar
+      state.idx[s] = nextPending(s, i);
+      startBreak('fail');
+    }
   }
 
-  function doPass(){ if(!state.running||state.finished) return; if(state.typingHold) toggleTypingHold(false); startBreak('pass'); }
-  function markFail(){ if(!state.running||state.finished) return;
+  /* Pasapalabra */
+  function doPass(){
+    if(!state.running||state.finished) return;
+    if(state.typingHold) toggleTypingHold(false);
+    const s=state.active, i=state.idx[s];
+    // No se responde ahora; se deja pendiente y se avanza el puntero
+    state.idx[s] = nextPending(s, i);
+    startBreak('pass');
+  }
+
+  /* Marcar fallo manual */
+  function markFail(){
+    if(!state.running||state.finished) return;
     const s=state.active,i=state.idx[s]; if(i===-1){switchTurn();return;}
     if(state.typingHold) toggleTypingHold(false);
-    state.rosco[s][i].status='bad'; render(); startBreak('fail'); }
+    state.rosco[s][i].status='bad'; render();
+    state.idx[s]=nextPending(s,i);
+    startBreak('fail');
+  }
 
-  function confetti(){ const c=document.createElement('canvas'),x=c.getContext('2d');
-    c.width=innerWidth;c.height=innerHeight;c.style.cssText='position:fixed;inset:0;z-index:80;pointer-events:none'; document.body.appendChild(c);
+  function confetti(){
+    const c=document.createElement('canvas'),x=c.getContext('2d');
+    c.width=innerWidth;c.height=innerHeight;c.style.cssText='position:fixed;inset:0;z-index:80;pointer-events:none';
+    document.body.appendChild(c);
     const colors=['#ffd166','#7c5cff','#1ec28b','#ff5d6c','#66e3ff'];
     const P=Array.from({length:120},()=>({x:Math.random()*c.width,y:-20-Math.random()*100,r:4+Math.random()*4,c:colors[(Math.random()*colors.length)|0],vx:(Math.random()-.5)*2,vy:2+Math.random()*3,rot:Math.random()*360,vr:(Math.random()*6-3)}));
-    const start=performance.now(),T=1800; function draw(now){ x.clearRect(0,0,c.width,c.height);
-      for(const p of P){ p.vy+=0.03;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr; x.save();x.translate(p.x,p.y);x.rotate(p.rot*Math.PI/180);x.fillStyle=p.c;x.fillRect(-p.r,-p.r,p.r*2,p.r*2);x.restore(); }
-      if(now-start<T) requestAnimationFrame(draw); else document.body.removeChild(c); } requestAnimationFrame(draw); }
+    const start=performance.now(),T=1800;
+    function draw(now){
+      x.clearRect(0,0,c.width,c.height);
+      for(const p of P){ p.vy+=0.03;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;
+        x.save();x.translate(p.x,p.y);x.rotate(p.rot*Math.PI/180);
+        x.fillStyle=p.c;x.fillRect(-p.r,-p.r,p.r*2,p.r*2);x.restore(); }
+      if(now-start<T) requestAnimationFrame(draw); else document.body.removeChild(c);
+    }
+    requestAnimationFrame(draw);
+  }
 
-  function endGame(opts={}){ state.finished=true; state.running=false; if(state.timer) clearInterval(state.timer);
+  function endGame(opts={}){
+    state.finished=true; state.running=false; if(state.timer) clearInterval(state.timer);
     const Aok=state.rosco.A.filter(x=>x.status==='ok').length, Bok=state.rosco.B.filter(x=>x.status==='ok').length;
     const Abad=state.rosco.A.filter(x=>x.status==='bad').length, Bbad=state.rosco.B.filter(x=>x.status==='bad').length;
-    let w=null, detail=''; if(opts.forceWinner){ w=opts.forceWinner; detail='Completó el rosco'; }
+    let w=null, detail='';
+    if(opts.forceWinner){ w=opts.forceWinner; detail='Completó el rosco'; }
     else { if(Aok>Bok) w='A'; else if(Bok>Aok) w='B'; else { if(Abad<Bbad) w='A'; else if(Bbad<Abad) w='B'; else w='empate'; } }
     const R=$('#result'); R.style.display='block';
     R.innerHTML=(w==='empate')
       ? `<strong>Empate técnico.</strong> Aciertos: A ${Aok} / B ${Bok}. Fallos: A ${Abad} / B ${Bbad}.`
       : `<strong>Gana el Jugador ${w}</strong> · Aciertos A ${Aok} / B ${Bok} · Fallos A ${Abad} / B ${Bbad}${detail?` · ${detail}`:''}`;
     if(w!=='empate') confetti();
-    ['#btnAnswer','#btnPass','#btnGiveUp','#btnMic'].forEach(id=>$(id).disabled=true); }
+    ['#btnAnswer','#btnPass','#btnGiveUp','#btnMic'].forEach(id=>$(id).disabled=true);
+  }
 
-  function newGame(){ const r=makeRoscos(); state.rosco.A=r.A; state.rosco.B=r.B;
-    state.idx.A=0; state.idx.B=0; state.active='A'; state.finished=false; state.running=false; state.paused=false; state.typingHold=false; state.counting=false; state.turnBreak=false;
-    $('#ovPause').style.display='none'; $('#ovCount').style.display='none'; $('#ovBreak').style.display='none'; render(); setClue(); }
+  function newGame(){
+    const r=makeRoscos();
+    state.rosco.A=r.A; state.rosco.B=r.B;
+    state.idx.A=0; state.idx.B=0;
+    state.active='A'; state.finished=false; state.running=false; state.paused=false; state.typingHold=false; state.counting=false; state.turnBreak=false;
+    $('#ovPause').style.display='none'; $('#ovCount').style.display='none'; $('#ovBreak').style.display='none';
+    render(); setClue();
+  }
 
   // Ajustes
   const dlg=$('#dlg');
@@ -403,14 +520,14 @@
   // Botones
   const go=()=>{ startCountdown(start); $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false; };
   $('#btnStart').onclick=go;
-  $('#btnReadHelp').onclick=()=>speak("Dos personas con su rosco. Responde o di pasapalabra. Si fallas o dices pasapalabra, hay un respiro y pulsas Continuar. Usa el botón escribir para pausar tu tiempo al teclear. Pausar detiene todo. Puedes activar responder por voz en Ajustes. Gana quien más acierte; si hay empate decide quien tenga menos fallos.");
+  $('#btnReadHelp').onclick=()=>speak("Mantén el turno mientras aciertas. Si fallas o dices pasapalabra, hay respiro y pulsas Continuar. No repites la misma letra en tu siguiente turno: sigues por la siguiente y, al cerrar la Z, vuelves por las pendientes.");
   $('#btnAnswer').onclick=submitAnswer; $('#btnPass').onclick=doPass; $('#btnGiveUp').onclick=markFail;
   $('#btnPause').onclick=()=>pauseToggle(); $('#btnPauseFab').onclick=()=>pauseToggle();
   $('#btnNew').onclick=()=>{ if(state.timer) clearInterval(state.timer); state.time.A=145; state.time.B=145; newGame(); };
   $('#btnMic').onclick=()=>{ if(state.stt&&state.recognizer&&!state.paused&&!state.turnBreak){ try{ state.recognizer.start(); }catch(e){} } };
   $('#btnWrite').onclick=()=>toggleTypingHold();
 
-  // 🔧 FIX: CONTINUAR del respiro
+  // Continuar del respiro → cambiar turno
   $('#btnContinue').onclick = () => {
     $('#ovBreak').style.display = 'none';
     state.turnBreak = false;
@@ -418,13 +535,19 @@
     render();
   };
 
-  document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.ctrlKey) submitAnswer(); if(e.key==='Enter'&&e.ctrlKey) doPass(); if(e.key==='Escape') pauseToggle(); });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.ctrlKey) submitAnswer();
+    if(e.key==='Enter'&&e.ctrlKey) doPass();
+    if(e.key==='Escape') pauseToggle();
+  });
 
   newGame();
 
-  // Mostrar errores JS en pantalla (por si acaso)
-  window.addEventListener('error',e=>{ const div=document.createElement('div'); div.style.cssText='position:fixed;left:0;right:0;bottom:0;background:#400;padding:8px;color:#fff;z-index:9999;font-size:12px';
-    div.textContent='Error: '+(e.message||'desconocido'); document.body.appendChild(div); setTimeout(()=>div.remove(),4000); });
+  // Mostrar errores JS (por si acaso)
+  window.addEventListener('error',e=>{
+    const div=document.createElement('div'); div.style.cssText='position:fixed;left:0;right:0;bottom:0;background:#400;padding:8px;color:#fff;z-index:9999;font-size:12px';
+    div.textContent='Error: '+(e.message||'desconocido'); document.body.appendChild(div); setTimeout(()=>div.remove(),4000);
+  });
 })();
 </script>
 </body>
