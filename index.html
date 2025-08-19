@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#0f1220" />
-<title>PASAPALABRA — V23.1 compat</title>
+<title>PASAPALABRA — V23.2 compat + audio/TTS</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b0f24;--panel:#141a3d;--ink:#eef2fb;--muted:#9aa3b2;--brand:#7c5cff;--ok:#1ec28b;--bad:#ff5d6c;--waiting:#25306a;--accent:#ffd166;--ring1:#1b214f;--ring2:#0a0f2e;--dot:36px}
@@ -64,7 +64,7 @@
   details.help{background:#0e1440;border:1px solid #2a357a;border-radius:16px;padding:8px 12px;margin:10px 0}
   details.help summary{cursor:pointer;font-weight:800}
   details.help p{margin:.35em 0}
-  /* Vista ENFOQUE (por defecto) */
+  /* Vista ENFOQUE por defecto (rosco grande móvil) */
   body.view-focus{--dot:48px}
   body.view-focus .grid{grid-template-columns:1fr}
   body.view-focus #pA, body.view-focus #pB{display:none}
@@ -72,7 +72,7 @@
   body.view-focus .rosco-wrap{max-width:540px}
   /* Vista doble */
   body.view-dual{--dot:34px}
-  /* Fallback <dialog> sin soporte */
+  /* Fallback <dialog> */
   dialog[open]{display:block;position:fixed;inset:20px;max-width:520px;margin:auto;background:#0c1231;border:1px solid #2b3378;border-radius:16px;padding:18px 20px;z-index:65}
 </style>
 </head>
@@ -81,7 +81,7 @@
     <div class="mast">
       <h1>PASAPALABRA</h1>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span class="badge">V23.1 · compat</span>
+        <span class="badge">V23.2 · compat+audio</span>
         <button class="btn btn-ghost" id="btnView">👤 Enfoque</button>
         <button class="btn btn-ghost" id="btnSettings">⚙️ Ajustes</button>
         <button class="btn btn-ghost" id="btnNew">Nuevo rosco</button>
@@ -91,9 +91,10 @@
     <details class="help">
       <summary>📖 Instrucciones (toca para ver)</summary>
       <p>• Mantienes el <strong>turno mientras aciertas</strong>; cambia si <strong>fallas</strong> o dices <strong>pasapalabra</strong>.</p>
-      <p>• Si pasas/fallas una letra, tu siguiente turno sigue por la <strong>siguiente letra</strong>. Tras la Z, se repasan las <em>pendientes</em> en orden.</p>
+      <p>• Si pasas/fallas, tu siguiente turno sigue por la <strong>siguiente letra</strong>. Tras la Z, se repasan las <em>pendientes</em> en orden.</p>
       <p>• Vista <strong>👤 Enfoque</strong> (rosco grande del jugador activo) o <strong>👥 Doble</strong>.</p>
       <p>• <strong>✍️ Escribir (pausar)</strong> congela tu tiempo al teclear. <strong>Pausar</strong> detiene todo.</p>
+      <p>• Voz y sonidos se activan tras el primer toque (Android los bloquea hasta que “despiertas” el audio).</p>
     </details>
 
     <section class="grid">
@@ -135,6 +136,7 @@
           <button class="btn btn-ghost btn-write" id="btnWrite">✍️ Escribir (pausar)</button>
           <button class="btn btn-danger" id="btnGiveUp" disabled>Marcar fallo</button>
           <button class="btn btn-ghost" id="btnPause">Pausar</button>
+          <span id="supportNote" style="color:#9aa3b2;font-size:12px"></span>
         </div>
         <div class="winner" id="result" style="display:none"></div>
         <div class="footer"><span>Desempate por fallos</span></div>
@@ -149,7 +151,7 @@
 
   <button class="fab" id="btnPauseFab" aria-label="Pausar">⏸️</button>
 
-  <!-- Ajustes (con fallback si el navegador no soporta <dialog>) -->
+  <!-- Ajustes -->
   <dialog id="dlg">
     <h3 style="margin:0 0 8px 0">Ajustes</h3>
     <div class="row" style="display:flex;align-items:center;gap:10px;margin:10px 0">
@@ -157,33 +159,42 @@
       <input id="rngTime" type="range" min="95" max="180" step="5" value="145" style="flex:1" />
       <span class="val" id="valTime">145 s</span>
     </div>
-    <div class="row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-      <input id="chkFuzzy" type="checkbox" checked /> <label for="chkFuzzy">Permitir un error ortográfico leve</label>
+    <div class="row" style="display:flex;align-items:center;gap:10px;margin:6px 0">
+      <input id="chkTTS" type="checkbox" checked /> <label for="chkTTS">Voz (leer definiciones y cuenta atrás)</label>
     </div>
-    <div class="row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+    <div class="row" style="display:flex;align-items:center;gap:10px;margin:6px 0">
+      <input id="chkSound" type="checkbox" checked /> <label for="chkSound">Sonidos (ding/buzz y pitidos)</label>
+    </div>
+    <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn btn-ghost" id="btnTestVoice">🔊 Probar voz</button>
+      <button class="btn btn-ghost" id="btnTestBeep">🔔 Probar sonido</button>
+    </div>
+    <div id="ttsStatus" style="margin-top:6px;color:#9aa3b2;font-size:12px"></div>
+    <div class="row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
       <button class="btn btn-ghost" id="btnCancel">Cerrar</button>
       <button class="btn btn-primary" id="btnApply">Aplicar</button>
     </div>
+    <p style="margin-top:8px;font-size:12px;color:#9aa3b2">Consejo: subido a HTTPS (GitHub Pages) todo suena mejor.</p>
   </dialog>
 
 <script>
 (function(){
-  /* --------- Polyfills mínimos --------- */
+  /* ===== Polyfills mínimos ===== */
   if(!Array.prototype.findIndex){
     Array.prototype.findIndex=function(cb, thisArg){
       for(var i=0;i<this.length;i++){ if(cb.call(thisArg, this[i], i, this)) return i; }
       return -1;
     };
   }
-  function pad2(n){ return (n<10?'0':'')+n; } // evita padStart
+  function pad2(n){ return (n<10?'0':'')+n; }
 
-  /* --------- Utilidades --------- */
+  /* ===== Utilidades básicas ===== */
   var LETTERS=["A","B","C","D","E","F","G","H","I","J","L","M","N","Ñ","O","P","Q","R","S","T","U","V","X","Y","Z"];
   var state={
     rosco:{A:[],B:[]}, idx:{A:0,B:0}, time:{A:145,B:145},
     active:'A', running:false, finished:false, paused:false,
     fuzzy:true, timer:null, typingHold:false, counting:false, turnBreak:false,
-    view:'focus'
+    view:'focus', tts:true, sounds:true, voice:null
   };
   function $(s){ return document.querySelector(s); }
   function norm(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
@@ -194,14 +205,77 @@
       var v=dp[j]+1; if(dp[j-1]+1<v) v=dp[j-1]+1; if(prev+cost<v) v=prev+cost; dp[j]=v; prev=tmp; } } return dp[n]; }
   function same(a,b){ return (a===b) || (state.fuzzy && lev(a,b)<=1 && Math.max(a.length,b.length)>=5); }
 
-  /* --------- Banco (compacto) --------- */
+  /* ===== AudioContext compartido + desbloqueo ===== */
+  var ACTX=null, audioUnlocked=false;
+  function getCtx(){
+    try{
+      var C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
+      if(!ACTX) ACTX=new C();
+      if(ACTX.state==='suspended'){ ACTX.resume(); }
+      return ACTX;
+    }catch(e){ return null; }
+  }
+  function unlockAudio(){
+    if(audioUnlocked) return;
+    var ctx=getCtx(); if(!ctx) return;
+    // pequeño “click” silencioso para desbloquear
+    try{
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      g.gain.value=0; o.connect(g); g.connect(ctx.destination);
+      o.start(0); o.stop(ctx.currentTime+0.01);
+      audioUnlocked=true;
+    }catch(e){}
+  }
+  // Desbloquear al primer gesto
+  ['touchstart','mousedown'].forEach(function(ev){
+    document.addEventListener(ev,function(){ unlockAudio(); }, {once:true, passive:true});
+  });
+
+  /* ===== Sonidos ===== */
+  function tone(freq, dur, type){
+    if(!state.sounds) return;
+    var ctx=getCtx(); if(!ctx) return;
+    try{
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.type=type||'sine'; o.frequency.value=freq||880; g.gain.value=0.0001;
+      o.connect(g); g.connect(ctx.destination);
+      var t=ctx.currentTime; g.gain.exponentialRampToValueAtTime(0.2, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+(dur||0.25));
+      o.start(t); o.stop(t+(dur||0.25)+0.02);
+    }catch(e){}
+  }
+  var ding=function(){ tone(880,0.22,'sine'); };
+  var buzz=function(){ tone(220,0.28,'sawtooth'); };
+
+  /* ===== TTS (voz) ===== */
+  function pickVoice(){
+    if(!('speechSynthesis' in window)) return;
+    var vs=window.speechSynthesis.getVoices();
+    var es=vs.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf('es')===0; });
+    state.voice = es.find(function(v){ return /es[-_]es/i.test(v.lang); }) || es[0] || null;
+    $('#ttsStatus').textContent = state.voice ? ('Voz: '+(state.voice.name||'es-ES')) : 'No se encontró voz española; usaré la del sistema.';
+  }
+  if('speechSynthesis' in window){
+    window.speechSynthesis.onvoiceschanged = pickVoice; pickVoice();
+  }
+  function speak(txt){
+    try{
+      if(!state.tts || !('speechSynthesis' in window)) return;
+      if(state.paused || state.turnBreak) return;
+      var u=new SpeechSynthesisUtterance(txt); u.lang='es-ES'; u.rate=1; u.pitch=1;
+      if(state.voice) u.voice=state.voice;
+      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  /* ===== Banco (compacto) ===== */
   var BANK={
     A:[{a:"abstinencia",c:"Privación voluntaria de consumir algo."},{a:"anacronismo",c:"Error por situar algo fuera de su época."},{a:"arcano",c:"Secreto o cosa misteriosa."}],
     B:[{a:"barometro",c:"Aparato que mide la presión atmosférica."},{a:"bitacora",c:"Cuaderno de navegación; diario."},{a:"bonanza",c:"Periodo de prosperidad o calma."}],
     C:[{a:"cautela",c:"Prudencia para evitar riesgos."},{a:"catarata",c:"Salto de agua grande; opacidad del cristalino."},{a:"cisma",c:"División en una organización."}],
     D:[{a:"diligencia",c:"Cuidado y rapidez en ejecutar algo."},{a:"desidia",c:"Descuido o pereza en obligaciones."},{a:"diatriba",c:"Escrito o discurso violento y ofensivo."}],
     E:[{a:"epilogo",c:"Parte final de una obra."},{a:"efimero",c:"De corta duración."},{a:"eclectico",c:"Que combina tendencias distintas."}],
-    F:[{a:"falaz",c:"Engañoso, aparente."},{a:"frugal",c:"Moderado en la comida o el gasto."},{a:"fertil",c:"Que produce en abundancia."}],
+    F:[{a:"falaz",c:"Engañoso, aparente."},{a:"frugal",c:"Moderado en comida o gasto."},{a:"fertil",c:"Que produce en abundancia."}],
     G:[{a:"glaciar",c:"Masa de hielo en movimiento."},{a:"gravamen",c:"Carga u obligación tributaria."},{a:"gregario",c:"Que vive en grupo."}],
     H:[{a:"hecatombe",c:"Suceso trágico con gran destrucción."},{a:"hibernar",c:"Pasar el invierno en reposo."},{a:"hosco",c:"Ceñudo, de mal humor."}],
     I:[{a:"ignifugo",c:"Que resiste el fuego."},{a:"inercia",c:"Resistencia a cambiar el movimiento."},{a:"inedito",c:"No publicado."}],
@@ -223,7 +297,7 @@
     Z:[{a:"zigzag",c:"Línea quebrada por tramos alternos."},{a:"zarcillo",c:"Tallo con que se agarran plantas."},{a:"zoquete",c:"Persona torpe."}]
   };
 
-  /* --------- Dibujo y estado --------- */
+  /* ===== Dibujo y estado ===== */
   function ringLayout(el,side){
     el.innerHTML='';
     var n=state.rosco[side].length, r=44;
@@ -235,14 +309,12 @@
       el.appendChild(d);
     }
   }
+  function count(s,status){ var arr=state.rosco[s], k=0; for(var i=0;i<arr.length;i++){ if(arr[i].status===status) k++; } return k; }
   function render(){
     ringLayout($('#rA'),'A'); ringLayout($('#rB'),'B');
-    var Aok=count('A','ok'), Bok=count('B','ok');
-    var Abad=count('A','bad'), Bbad=count('B','bad');
-    var Apen=count('A','pending'), Bpen=count('B','pending');
-    $('#aOK').textContent=Aok; $('#bOK').textContent=Bok;
-    $('#aBAD').textContent=Abad; $('#bBAD').textContent=Bbad;
-    $('#aPEN').textContent=Apen; $('#bPEN').textContent=Bpen;
+    $('#aOK').textContent=count('A','ok'); $('#bOK').textContent=count('B','ok');
+    $('#aBAD').textContent=count('A','bad'); $('#bBAD').textContent=count('B','bad');
+    $('#aPEN').textContent=count('A','pending'); $('#bPEN').textContent=count('B','pending');
     $('#tA').textContent=tfmt(state.time.A); $('#tB').textContent=tfmt(state.time.B);
     document.body.className=(state.view==='focus'?'view-focus ':'view-dual ')+('focus-'+state.active);
     $('#btnPause').textContent=state.paused?'Reanudar':'Pausar';
@@ -250,13 +322,14 @@
     $('#writeTag').style.display=state.typingHold?'inline-block':'none';
     var ans=$('#answer'); if(state.typingHold){ ans.classList.add('hold'); } else { ans.classList.remove('hold'); }
   }
-  function count(s,status){ var arr=state.rosco[s], k=0; for(var i=0;i<arr.length;i++){ if(arr[i].status===status) k++; } return k; }
-
   function labelFor(L){ if(L==='Ñ')return'Contiene eñe'; if(L==='X')return'Contiene equis'; if(L==='Q')return'Con la cu'; if(L==='Y')return'Con la ye'; return 'Con la '+L.toLowerCase(); }
   function setClue(){
     var s=state.active, i=state.idx[s]; $('#turnTag').textContent='Turno: Jugador '+s;
     if(i===-1){ switchTurn(); return; }
-    var it=state.rosco[s][i]; $('#clue').textContent=labelFor(it.letter)+': '+it.clue;
+    var it=state.rosco[s][i];
+    var txt=labelFor(it.letter)+': '+it.clue;
+    $('#clue').textContent=txt;
+    if(state.tts) speak(txt);
     render();
   }
 
@@ -305,6 +378,8 @@
     $('#brTitle').textContent = (kind==='pass')?'Pasapalabra':'Fallo';
     $('#brText').textContent = 'Cambio de turno. Respira…';
     $('#ovBreak').style.display='grid';
+    if(!state.tts && state.sounds){ (kind==='pass'? ding : buzz)(); }
+    if(state.tts){ speak(kind==='pass'?'¡Pasapalabra!':'¡Fallo!'); }
   }
 
   function submitAnswer(){
@@ -330,7 +405,6 @@
     var s=state.active,i=state.idx[s]; if(i===-1){switchTurn();return;}
     if(state.typingHold) toggleTypingHold(false);
     state.rosco[s][i].status='bad'; render(); state.idx[s]=nextPending(s,i); startBreak('fail'); }
-
   function allOk(side){ var arr=state.rosco[side]; for(var k=0;k<arr.length;k++){ if(arr[k].status!=='ok') return false; } return true; }
 
   function endGame(opts){
@@ -364,32 +438,47 @@
     render(); setClue();
   }
 
-  /* --------- Cuenta atrás simple --------- */
+  /* ===== Cuenta atrás con voz/beep y desbloqueo de audio en el toque ===== */
   function startCountdown(then){
     if(state.counting) return; state.counting=true; $('#ovCount').style.display='grid';
     var n=3; $('#countNum').textContent=n;
+    if(state.tts) speak(String(n)); else if(state.sounds) tone(660,0.15,'square');
     var id=setInterval(function(){
-      n--; if(n>0){ $('#countNum').textContent=n; }
-      else{ clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then(); }
+      n--;
+      if(n>0){
+        $('#countNum').textContent=n;
+        if(state.tts) speak(String(n)); else if(state.sounds) tone(660,0.15,'square');
+      }else{
+        clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then();
+      }
     },1000);
   }
 
-  /* --------- Botones --------- */
+  /* ===== Ajustes y botones ===== */
   var dlg=$('#dlg');
   function openDialog(){ if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open',''); }
   function closeDialog(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
 
-  $('#btnSettings').onclick=function(){ $('#rngTime').value=state.time.A; $('#valTime').textContent=state.time.A+' s'; $('#chkFuzzy').checked=state.fuzzy; openDialog(); };
+  $('#btnSettings').onclick=function(){ $('#rngTime').value=state.time.A; $('#valTime').textContent=state.time.A+' s';
+    $('#chkTTS').checked=state.tts; $('#chkSound').checked=state.sounds; openDialog(); };
   $('#btnCancel').onclick=function(){ closeDialog(); };
   $('#rngTime').oninput=function(e){ $('#valTime').textContent=e.target.value+' s'; };
   $('#btnApply').onclick=function(){
     var secs=parseInt($('#rngTime').value,10); state.time.A=secs; state.time.B=secs;
-    state.fuzzy=$('#chkFuzzy').checked; render(); closeDialog();
+    state.tts=$('#chkTTS').checked; state.sounds=$('#chkSound').checked;
+    $('#supportNote').textContent = (!('speechSynthesis' in window) && state.tts) ? 'Tu navegador no soporta voz.' : '';
+    render(); closeDialog();
   };
+  $('#btnTestVoice').onclick=function(){ unlockAudio(); speak('Esto es una prueba de voz. Uno, dos, tres.'); };
+  $('#btnTestBeep').onclick=function(){ unlockAudio(); tone(880,0.25,'sine'); };
 
-  $('#btnStart').onclick=function(){ startCountdown(start); $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false; };
-  $('#btnAnswer').onclick=submitAnswer; $('#btnPass').onclick=doPass; $('#btnGiveUp').onclick=markFail;
-  $('#btnPause').onclick=function(){ pauseToggle(); }; $('#btnPauseFab').onclick=function(){ pauseToggle(); };
+  const go=function(){ unlockAudio(); startCountdown(start); $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false; };
+  $('#btnStart').onclick=go;
+  $('#btnAnswer').onclick=function(){ unlockAudio(); submitAnswer(); };
+  $('#btnPass').onclick=function(){ unlockAudio(); doPass(); };
+  $('#btnGiveUp').onclick=function(){ unlockAudio(); markFail(); };
+  $('#btnPause').onclick=function(){ unlockAudio(); pauseToggle(); };
+  $('#btnPauseFab').onclick=function(){ unlockAudio(); pauseToggle(); };
   $('#btnNew').onclick=function(){ if(state.timer) clearInterval(state.timer); state.time.A=145; state.time.B=145; newGame(); };
   $('#btnWrite').onclick=function(){ toggleTypingHold(); };
   $('#btnView').onclick=function(){ state.view=(state.view==='focus')?'dual':'focus'; render(); };
@@ -397,12 +486,12 @@
   $('#btnContinue').onclick=function(){ $('#ovBreak').style.display='none'; state.turnBreak=false; switchTurn(); render(); };
 
   document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&!e.ctrlKey) submitAnswer();
-    if(e.key==='Enter'&&e.ctrlKey) doPass();
+    if(e.key==='Enter'&&!e.ctrlKey){ unlockAudio(); submitAnswer(); }
+    if(e.key==='Enter'&&e.ctrlKey){ unlockAudio(); doPass(); }
     if(e.key==='Escape') pauseToggle();
   });
 
-  /* --------- Arranque --------- */
+  /* ===== Arranque ===== */
   newGame();
 
   /* Mostrar errores JS arriba si algo peta */
