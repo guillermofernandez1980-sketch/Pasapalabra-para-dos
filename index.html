@@ -4,16 +4,16 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#0f1220" />
-<title>PASAPALABRA — V22.6 (mantener turno + saltar letra)</title>
+<title>PASAPALABRA — V23.1 compat</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#0b0f24;--panel:#141a3d;--ink:#eef2fb;--muted:#9aa3b2;--brand:#7c5cff;--ok:#1ec28b;--bad:#ff5d6c;--waiting:#25306a;--accent:#ffd166;--ring1:#1b214f;--ring2:#0a0f2e}
+  :root{--bg:#0b0f24;--panel:#141a3d;--ink:#eef2fb;--muted:#9aa3b2;--brand:#7c5cff;--ok:#1ec28b;--bad:#ff5d6c;--waiting:#25306a;--accent:#ffd166;--ring1:#1b214f;--ring2:#0a0f2e;--dot:36px}
   *{box-sizing:border-box} html,body{height:100%}
   body{margin:0;color:var(--ink);font-family:Montserrat,system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial,sans-serif;
        background:radial-gradient(1200px 800px at 10% 10%, rgba(124,92,255,.22), transparent 60%),
                   radial-gradient(900px 600px at 90% 20%, rgba(30,194,139,.18), transparent 60%),
                   linear-gradient(180deg,#0a0d22,#10163a 55%,#0b0f2a)}
-  .wrap{max-width:1200px;margin-inline:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  .wrap{max-width:1200px;margin-inline:auto;padding:14px}
   .mast{display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(90deg,#111851,#1a2b6e 60%,#111851);
         border:1px solid #243189;border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 8px 22px rgba(0,0,0,.25),inset 0 0 24px rgba(255,255,255,.06)}
   .mast h1{margin:0;font-size:26px;letter-spacing:.1em;font-weight:900;text-transform:uppercase;text-shadow:0 2px 0 rgba(0,0,0,.25),0 0 24px rgba(124,92,255,.35)}
@@ -32,14 +32,14 @@
   .stats{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
   .stat{background:#0f1542;border:1px solid #28327a;padding:6px 10px;border-radius:10px;font-size:13px}
   .stat strong{font-size:15px}
-  .rosco-wrap{position:relative;aspect-ratio:1/1;max-width:360px;margin:12px auto;border-radius:50%;
+  .rosco-wrap{position:relative;aspect-ratio:1/1;max-width:360px;margin:18px auto;border-radius:50%;
     background:radial-gradient(circle at 50% 50%, #12194a 57%, transparent 58%), radial-gradient(circle at 50% 50%, var(--ring1) 64%, var(--ring2) 66%, transparent 67%);
     box-shadow:0 0 0 2px #202a70 inset,0 0 38px rgba(124,92,255,.22) inset;overflow:hidden}
   .rosco-wrap::before{content:"";position:absolute;inset:-10%;border-radius:50%;
     background:conic-gradient(from 0deg, rgba(255,255,255,.06), rgba(255,255,255,0), rgba(255,255,255,.06));
     animation:spin 10s linear infinite;pointer-events:none}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .dot{position:absolute;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#0b0f2a;background:#fff;
+  .dot{position:absolute;width:var(--dot);height:var(--dot);border-radius:50%;display:grid;place-items:center;font-weight:900;color:#0b0f2a;background:#fff;
        border:2px solid rgba(255,255,255,.15);transform:translate(-50%,-50%);text-shadow:0 1px 0 rgba(255,255,255,.25)}
   .dot::after{content:attr(data-letter)}
   .dot.active{outline:3px solid var(--accent);outline-offset:2px;filter:brightness(1.05)}
@@ -64,14 +64,25 @@
   details.help{background:#0e1440;border:1px solid #2a357a;border-radius:16px;padding:8px 12px;margin:10px 0}
   details.help summary{cursor:pointer;font-weight:800}
   details.help p{margin:.35em 0}
+  /* Vista ENFOQUE (por defecto) */
+  body.view-focus{--dot:48px}
+  body.view-focus .grid{grid-template-columns:1fr}
+  body.view-focus #pA, body.view-focus #pB{display:none}
+  body.view-focus.focus-A #pA, body.view-focus.focus-B #pB{display:block}
+  body.view-focus .rosco-wrap{max-width:540px}
+  /* Vista doble */
+  body.view-dual{--dot:34px}
+  /* Fallback <dialog> sin soporte */
+  dialog[open]{display:block;position:fixed;inset:20px;max-width:520px;margin:auto;background:#0c1231;border:1px solid #2b3378;border-radius:16px;padding:18px 20px;z-index:65}
 </style>
 </head>
-<body>
+<body class="view-focus focus-A">
   <div class="wrap">
     <div class="mast">
       <h1>PASAPALABRA</h1>
-      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
-        <span class="badge">V22.6 · móvil</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="badge">V23.1 · compat</span>
+        <button class="btn btn-ghost" id="btnView">👤 Enfoque</button>
         <button class="btn btn-ghost" id="btnSettings">⚙️ Ajustes</button>
         <button class="btn btn-ghost" id="btnNew">Nuevo rosco</button>
       </div>
@@ -79,11 +90,10 @@
 
     <details class="help">
       <summary>📖 Instrucciones (toca para ver)</summary>
-      <p>• Mantienes el <strong>turno mientras aciertas</strong>. Solo cambias al otro si <strong>fallas</strong> o dices <strong>pasapalabra</strong>.</p>
-      <p>• Si pasas o fallas una letra, en tu siguiente turno <strong>sigues por la siguiente</strong> (no repites la misma). Al cerrar la Z, vuelves por las <em>pendientes</em> en su orden.</p>
-      <p>• Usa <strong>✍️ Escribir (pausar)</strong> para congelar tu tiempo mientras tecleas.</p>
-      <p>• <strong>Pausar</strong> detiene todo el juego. <strong>Micrófono</strong> (Chrome Android + HTTPS) en <em>Ajustes</em>.</p>
-      <button class="btn btn-ghost" id="btnReadHelp">🔊 Leer instrucciones</button>
+      <p>• Mantienes el <strong>turno mientras aciertas</strong>; cambia si <strong>fallas</strong> o dices <strong>pasapalabra</strong>.</p>
+      <p>• Si pasas/fallas una letra, tu siguiente turno sigue por la <strong>siguiente letra</strong>. Tras la Z, se repasan las <em>pendientes</em> en orden.</p>
+      <p>• Vista <strong>👤 Enfoque</strong> (rosco grande del jugador activo) o <strong>👥 Doble</strong>.</p>
+      <p>• <strong>✍️ Escribir (pausar)</strong> congela tu tiempo al teclear. <strong>Pausar</strong> detiene todo.</p>
     </details>
 
     <section class="grid">
@@ -91,9 +101,9 @@
         <h2>Jugador A</h2>
         <div class="timer" id="tA">02:25</div>
         <div class="stats">
-          <div class="stat">✅ <strong id="aOK">0</strong> correctas</div>
-          <div class="stat">❌ <strong id="aBAD">0</strong> fallos</div>
-          <div class="stat">⏳ <strong id="aPEN">25</strong> pendientes</div>
+          <div class="stat">✅ <strong id="aOK">0</strong></div>
+          <div class="stat">❌ <strong id="aBAD">0</strong></div>
+          <div class="stat">⏳ <strong id="aPEN">25</strong></div>
         </div>
         <div class="rosco-wrap" id="rA"></div>
       </div>
@@ -102,9 +112,9 @@
         <h2>Jugador B</h2>
         <div class="timer" id="tB">02:25</div>
         <div class="stats">
-          <div class="stat">✅ <strong id="bOK">0</strong> correctas</div>
-          <div class="stat">❌ <strong id="bBAD">0</strong> fallos</div>
-          <div class="stat">⏳ <strong id="bPEN">25</strong> pendientes</div>
+          <div class="stat">✅ <strong id="bOK">0</strong></div>
+          <div class="stat">❌ <strong id="bBAD">0</strong></div>
+          <div class="stat">⏳ <strong id="bPEN">25</strong></div>
         </div>
         <div class="rosco-wrap" id="rB"></div>
       </div>
@@ -113,38 +123,33 @@
         <div class="prompt">
           <span class="tag" id="turnTag">Turno: Jugador A</span>
           <span class="tag" id="writeTag" style="display:none;background:#3a2a00;border-color:#8a6f1a;color:#ffd166">✍️ Escribiendo — tiempo congelado</span>
-          <div class="clue" id="clue">Pulsa “Empezar”. Si activas voz, leeré cada definición.</div>
+          <div class="clue" id="clue">Pulsa “Empezar”.</div>
         </div>
         <div class="inputrow">
-          <input id="answer" type="text" placeholder="Escribe o usa el micrófono (di ‘pasapalabra’)" autocomplete="off" inputmode="latin" />
+          <input id="answer" type="text" placeholder="Escribe (o di ‘pasapalabra’)" autocomplete="off" inputmode="latin" />
           <button class="btn btn-primary" id="btnStart">Empezar</button>
           <button class="btn btn-ok" id="btnAnswer" disabled>Responder</button>
           <button class="btn btn-ghost" id="btnPass" disabled>Pasapalabra</button>
-          <button class="btn btn-ghost" id="btnMic" title="Responder por voz" disabled>🎙️</button>
         </div>
         <div class="toolbar">
           <button class="btn btn-ghost btn-write" id="btnWrite">✍️ Escribir (pausar)</button>
           <button class="btn btn-danger" id="btnGiveUp" disabled>Marcar fallo</button>
           <button class="btn btn-ghost" id="btnPause">Pausar</button>
-          <span id="supportNote" style="color:#9aa3b2;font-size:12px"></span>
         </div>
         <div class="winner" id="result" style="display:none"></div>
-        <div class="footer">
-          <span>Todo táctil. (Atajos opcionales: Enter/ESC)</span>
-          <span>Desempate por fallos</span>
-        </div>
+        <div class="footer"><span>Desempate por fallos</span></div>
       </div>
     </section>
   </div>
 
   <!-- Overlays -->
-  <div class="overlay" id="ovPause"><div class="box"><h3>Pausa</h3><p>El tiempo y la voz están detenidos.</p><button class="btn btn-primary" id="btnResume">Reanudar</button></div></div>
+  <div class="overlay" id="ovPause"><div class="box"><h3>Pausa</h3><p>Todo detenido.</p><button class="btn btn-primary" id="btnResume">Reanudar</button></div></div>
   <div class="overlay" id="ovCount"><div class="box"><div class="count" id="countNum">3</div><p>Preparados…</p></div></div>
   <div class="overlay" id="ovBreak"><div class="box"><h3 id="brTitle">Cambio de turno</h3><p id="brText">Respira…</p><button class="btn btn-primary" id="btnContinue">Continuar</button></div></div>
 
   <button class="fab" id="btnPauseFab" aria-label="Pausar">⏸️</button>
 
-  <!-- Ajustes -->
+  <!-- Ajustes (con fallback si el navegador no soporta <dialog>) -->
   <dialog id="dlg">
     <h3 style="margin:0 0 8px 0">Ajustes</h3>
     <div class="row" style="display:flex;align-items:center;gap:10px;margin:10px 0">
@@ -153,400 +158,257 @@
       <span class="val" id="valTime">145 s</span>
     </div>
     <div class="row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-      <input id="chkTTS" type="checkbox" checked /> <label for="chkTTS">Leer definiciones (TTS)</label>
-    </div>
-    <div class="row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-      <input id="chkSTT" type="checkbox" /> <label for="chkSTT">Responder por voz (si el navegador lo soporta)</label>
-    </div>
-    <div class="row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
       <input id="chkFuzzy" type="checkbox" checked /> <label for="chkFuzzy">Permitir un error ortográfico leve</label>
-    </div>
-    <div class="row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-      <input id="chkSound" type="checkbox" checked /> <label for="chkSound">Sonidos (ding/buzz)</label>
     </div>
     <div class="row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
       <button class="btn btn-ghost" id="btnCancel">Cerrar</button>
       <button class="btn btn-primary" id="btnApply">Aplicar</button>
     </div>
-    <p style="margin-top:10px;font-size:12px;color:#9aa3b2">El micro va mejor en Chrome Android y requiere HTTPS (ej: GitHub Pages).</p>
   </dialog>
 
 <script>
 (function(){
-  const LETTERS=["A","B","C","D","E","F","G","H","I","J","L","M","N","Ñ","O","P","Q","R","S","T","U","V","X","Y","Z"];
+  /* --------- Polyfills mínimos --------- */
+  if(!Array.prototype.findIndex){
+    Array.prototype.findIndex=function(cb, thisArg){
+      for(var i=0;i<this.length;i++){ if(cb.call(thisArg, this[i], i, this)) return i; }
+      return -1;
+    };
+  }
+  function pad2(n){ return (n<10?'0':'')+n; } // evita padStart
 
-  const state={
+  /* --------- Utilidades --------- */
+  var LETTERS=["A","B","C","D","E","F","G","H","I","J","L","M","N","Ñ","O","P","Q","R","S","T","U","V","X","Y","Z"];
+  var state={
     rosco:{A:[],B:[]}, idx:{A:0,B:0}, time:{A:145,B:145},
     active:'A', running:false, finished:false, paused:false,
-    tts:true, stt:false, fuzzy:true, sounds:true,
-    recognizer:null, voice:null, timer:null,
-    typingHold:false, counting:false, turnBreak:false
+    fuzzy:true, timer:null, typingHold:false, counting:false, turnBreak:false,
+    view:'focus'
+  };
+  function $(s){ return document.querySelector(s); }
+  function norm(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+  function tfmt(s){ var m=Math.floor(s/60), ss=Math.floor(s%60); return pad2(m)+':'+pad2(ss); }
+  function pick(n,arr){ var c=arr.slice(); for(var i=c.length-1;i>0;i--){var j=(Math.random()*(i+1))|0; var t=c[i]; c[i]=c[j]; c[j]=t;} return c.slice(0,n); }
+  function lev(a,b){ var m=a.length,n=b.length,dp=new Array(n+1); for(var j=0;j<=n;j++) dp[j]=j;
+    for(var i=1;i<=m;i++){ var prev=dp[0]; dp[0]=i; for(var j=1;j<=n;j++){ var tmp=dp[j]; var cost=(a[i-1]===b[j-1])?0:1;
+      var v=dp[j]+1; if(dp[j-1]+1<v) v=dp[j-1]+1; if(prev+cost<v) v=prev+cost; dp[j]=v; prev=tmp; } } return dp[n]; }
+  function same(a,b){ return (a===b) || (state.fuzzy && lev(a,b)<=1 && Math.max(a.length,b.length)>=5); }
+
+  /* --------- Banco (compacto) --------- */
+  var BANK={
+    A:[{a:"abstinencia",c:"Privación voluntaria de consumir algo."},{a:"anacronismo",c:"Error por situar algo fuera de su época."},{a:"arcano",c:"Secreto o cosa misteriosa."}],
+    B:[{a:"barometro",c:"Aparato que mide la presión atmosférica."},{a:"bitacora",c:"Cuaderno de navegación; diario."},{a:"bonanza",c:"Periodo de prosperidad o calma."}],
+    C:[{a:"cautela",c:"Prudencia para evitar riesgos."},{a:"catarata",c:"Salto de agua grande; opacidad del cristalino."},{a:"cisma",c:"División en una organización."}],
+    D:[{a:"diligencia",c:"Cuidado y rapidez en ejecutar algo."},{a:"desidia",c:"Descuido o pereza en obligaciones."},{a:"diatriba",c:"Escrito o discurso violento y ofensivo."}],
+    E:[{a:"epilogo",c:"Parte final de una obra."},{a:"efimero",c:"De corta duración."},{a:"eclectico",c:"Que combina tendencias distintas."}],
+    F:[{a:"falaz",c:"Engañoso, aparente."},{a:"frugal",c:"Moderado en la comida o el gasto."},{a:"fertil",c:"Que produce en abundancia."}],
+    G:[{a:"glaciar",c:"Masa de hielo en movimiento."},{a:"gravamen",c:"Carga u obligación tributaria."},{a:"gregario",c:"Que vive en grupo."}],
+    H:[{a:"hecatombe",c:"Suceso trágico con gran destrucción."},{a:"hibernar",c:"Pasar el invierno en reposo."},{a:"hosco",c:"Ceñudo, de mal humor."}],
+    I:[{a:"ignifugo",c:"Que resiste el fuego."},{a:"inercia",c:"Resistencia a cambiar el movimiento."},{a:"inedito",c:"No publicado."}],
+    J:[{a:"jazmin",c:"Planta de flores aromáticas."},{a:"jornada",c:"Día de trabajo."},{a:"jocoso",c:"Gracioso, festivo."}],
+    L:[{a:"lexico",c:"Conjunto de palabras de una lengua."},{a:"lobrego",c:"Oscuro, tétrico."},{a:"laconico",c:"Breve, conciso."}],
+    M:[{a:"madriguera",c:"Refugio subterráneo de animales."},{a:"mitomano",c:"Persona con tendencia patológica a mentir."},{a:"magnanimo",c:"Generoso; noble de ánimo."}],
+    N:[{a:"nebulosa",c:"Nube interestelar de gas y polvo."},{a:"nadir",c:"Punto opuesto al cenit."},{a:"nemesis",c:"Rival o justa retribución."}],
+    "Ñ":[{a:"arana",c:"Arácnido que teje telas. (contiene Ñ)"},{a:"anorar",c:"Echar de menos con intensidad. (contiene Ñ)"},{a:"canizo",c:"Enrejado de cañas. (contiene Ñ)"}],
+    O:[{a:"osamenta",c:"Conjunto de huesos."},{a:"osmosis",c:"Paso de solvente por membrana semipermeable."},{a:"oprobio",c:"Deshonra pública."}],
+    P:[{a:"paradoja",c:"Aparente contradicción con verdad."},{a:"pleonasmo",c:"Redundancia como ‘subir arriba’."},{a:"perenne",c:"Continuo o muy duradero."}],
+    Q:[{a:"quimera",c:"Ilusión imposible; monstruo mitológico."},{a:"querencia",c:"Apego a un lugar."},{a:"querella",c:"Demanda o disputa judicial."}],
+    R:[{a:"resiliencia",c:"Capacidad de sobreponerse a la adversidad."},{a:"refran",c:"Dicho breve popular."},{a:"retorica",c:"Arte de la persuasión al hablar o escribir."}],
+    S:[{a:"sigilo",c:"Reserva y secreto."},{a:"saeta",c:"Canto de Semana Santa; flecha."},{a:"somero",c:"Superficial."}],
+    T:[{a:"taciturno",c:"Callado y melancólico."},{a:"tedio",c:"Aburrimiento profundo."},{a:"tenaz",c:"Persistente."}],
+    U:[{a:"utopia",c:"Ideal deseable irrealizable."},{a:"ufano",c:"Orgulloso o satisfecho."},{a:"ubicuo",c:"Presente en muchos lugares (fig.)."}],
+    V:[{a:"verosimil",c:"Que parece verdadero."},{a:"voraz",c:"Que come con ansia; muy ávido."},{a:"vehemente",c:"Apasionado, impetuoso."}],
+    X:[{a:"axila",c:"Cavidad bajo el brazo. (contiene X)"},{a:"exiguo",c:"Muy escaso. (contiene X)"},{a:"oxigeno",c:"Gas necesario para la respiración. (contiene X)"}],
+    Y:[{a:"yodo",c:"Elemento químico antiséptico."},{a:"yegua",c:"Hembra del caballo."},{a:"yermo",c:"Tierra inculta o despoblada."}],
+    Z:[{a:"zigzag",c:"Línea quebrada por tramos alternos."},{a:"zarcillo",c:"Tallo con que se agarran plantas."},{a:"zoquete",c:"Persona torpe."}]
   };
 
-  const $=s=>document.querySelector(s);
-  const norm=s=>(s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-  const tfmt=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-  function pick(n,arr){const c=[...arr];for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}return c.slice(0,n);}
-  function lev(a,b){const m=a.length,n=b.length,dp=new Array(n+1);for(let j=0;j<=n;j++)dp[j]=j;for(let i=1;i<=m;i++){let p=dp[0];dp[0]=i;for(let j=1;j<=n;j++){const t=dp[j],cost=(a[i-1]===b[j-1])?0:1;dp[j]=Math.min(dp[j]+1,dp[j-1]+1,p+cost);p=t;}}return dp[n];}
-  const same=(a,b)=> (a===b) || (state.fuzzy && lev(a,b)<=1 && Math.max(a.length,b.length)>=5);
-
-  /* Banco (recortado para demo) */
-  const BANK={A:[{a:"abstinencia",c:"Privación voluntaria de consumir o hacer algo, especialmente alcohol o drogas.",d:7},{a:"anacronismo",c:"Error por situar algo fuera de su época.",d:7},{a:"arcano",c:"Secreto o cosa misteriosa de difícil comprensión.",d:7}],
-  B:[{a:"barometro",c:"Aparato que mide la presión atmosférica.",d:7},{a:"bitacora",c:"Cuaderno de navegación; por extensión, diario o blog.",d:7},{a:"bonanza",c:"Período de prosperidad o calma.",d:7}],
-  C:[{a:"cautela",c:"Actitud de prudencia para evitar riesgos.",d:7},{a:"catarata",c:"Salto de agua grande; también opacidad del cristalino.",d:7},{a:"cisma",c:"División o rompimiento en una organización.",d:7}],
-  D:[{a:"diligencia",c:"Cuidado y rapidez en ejecutar algo.",d:7},{a:"desidia",c:"Descuido y pereza en el cumplimiento de obligaciones.",d:7},{a:"diatriba",c:"Discurso o escrito violento y ofensivo.",d:9}],
-  E:[{a:"epilogo",c:"Parte final de una obra donde se comenta o cierra lo anterior.",d:7},{a:"efimero",c:"De corta duración, pasajero.",d:7},{a:"eclectico",c:"Que combina elementos de distintas tendencias.",d:7}],
-  F:[{a:"falaz",c:"Dicho de un razonamiento: aparente y engañoso.",d:7},{a:"frugal",c:"Sencillo en la comida o el gasto; moderado.",d:7},{a:"fertil",c:"Que produce en abundancia.",d:7}],
-  G:[{a:"glaciar",c:"Gran masa de hielo que se desplaza lentamente.",d:7},{a:"gravamen",c:"Carga u obligación tributaria que grava bienes o rentas.",d:9},{a:"gregario",c:"Dicho de un animal: que vive en grupo.",d:7}],
-  H:[{a:"hecatombe",c:"Suceso trágico con gran destrucción o mortandad.",d:7},{a:"hibernar",c:"Pasar el invierno en reposo, reduciendo actividad vital.",d:7},{a:"hosco",c:"Ceñudo, de mal humor.",d:7}],
-  I:[{a:"ignifugo",c:"Dicho de un material: que no arde o resiste el fuego.",d:7},{a:"inercia",c:"Resistencia de un cuerpo a modificar su estado de movimiento.",d:7},{a:"inedito",c:"No publicado.",d:7}],
-  J:[{a:"jazmin",c:"Planta trepadora de flores aromáticas.",d:7},{a:"jornada",c:"Día de trabajo o conjunto de horas dedicadas a una actividad.",d:7},{a:"jocoso",c:"Gracioso, festivo.",d:7}],
-  L:[{a:"lexico",c:"Conjunto de palabras de una lengua; vocabulario.",d:7},{a:"lobrego",c:"Oscuro, tétrico, triste.",d:9},{a:"laconico",c:"Breve, conciso.",d:7}],
-  M:[{a:"madriguera",c:"Refugio subterráneo de ciertos animales.",d:7},{a:"mitomano",c:"Persona con tendencia patológica a mentir.",d:7},{a:"magnanimo",c:"Generoso de ánimo noble.",d:7}],
-  N:[{a:"nebulosa",c:"Nube interestelar de gas y polvo donde pueden nacer estrellas.",d:7},{a:"nadir",c:"Punto opuesto al cenit en la esfera celeste.",d:9},{a:"nemesis",c:"Rival o agente de retribución.",d:7}],
-  "Ñ":[{a:"arana",c:"Arácnido que teje telas para capturar presas. (contiene Ñ)",d:7},{a:"anorar",c:"Echar de menos con intensidad. (contiene Ñ)",d:7},{a:"canizo",c:"Enrejado hecho de cañas. (contiene Ñ)",d:9}],
-  O:[{a:"osamenta",c:"Conjunto de huesos del cuerpo de un animal.",d:7},{a:"osmosis",c:"Paso de solvente a través de una membrana semipermeable.",d:7},{a:"oprobio",c:"Deshonra o vergüenza pública.",d:9}],
-  P:[{a:"paradoja",c:"Afirmación que parece contradictoria pero encierra verdad.",d:7},{a:"pleonasmo",c:"Redundancia como en ‘subir arriba’.",d:9},{a:"perenne",c:"Que dura mucho tiempo o es continuo.",d:7}],
-  Q:[{a:"quimera",c:"Ilusión imposible o monstruo mitológico.",d:7},{a:"querencia",c:"Inclinación o apego a un lugar al que se vuelve.",d:9},{a:"querella",c:"Disputa o demanda judicial.",d:7}],
-  R:[{a:"resiliencia",c:"Capacidad de adaptarse a la adversidad y recuperarse.",d:7},{a:"refran",c:"Dicho breve y sentencioso de uso popular.",d:7},{a:"retorica",c:"Arte de hablar o escribir de forma persuasiva.",d:7}],
-  S:[{a:"sigilo",c:"Secreto o reserva para no ser oído.",d:7},{a:"saeta",c:"Canto religioso popular de Semana Santa; también flecha.",d:7},{a:"somero",c:"Superficial, poco profundo.",d:7}],
-  T:[{a:"taciturno",c:"Persona de carácter callado y melancólico.",d:7},{a:"tedio",c:"Aburrimiento profundo.",d:7},{a:"tenaz",c:"Persistente, firme en un propósito.",d:7}],
-  U:[{a:"utopia",c:"Proyecto ideal y deseable pero de realización imposible.",d:7},{a:"ufano",c:"Satisfecho u orgulloso de sí mismo.",d:7},{a:"ubicuo",c:"Que está en muchos lugares al mismo tiempo (fig.).",d:7}],
-  V:[{a:"verosimil",c:"Que parece verdadero o creíble.",d:7},{a:"voraz",c:"Que come con mucha ansia; muy ávido.",d:7},{a:"vehemente",c:"Apasionado, impetuoso.",d:7}],
-  X:[{a:"axila",c:"Cavidad situada bajo el brazo. (contiene X)",d:7},{a:"exiguo",c:"Muy escaso, insuficiente. (contiene X)",d:9},{a:"oxigeno",c:"Gas necesario para la respiración. (contiene X)",d:7}],
-  Y:[{a:"yodo",c:"Elemento químico usado como antiséptico en solución.",d:7},{a:"yegua",c:"Hembra del caballo.",d:7},{a:"yermo",c:"Tierra inculta o despoblada.",d:7}],
-  Z:[{a:"zigzag",c:"Línea quebrada formada por segmentos alternos.",d:7},{a:"zarcillo",c:"Tallo fino con que se agarran algunas plantas trepadoras.",d:9},{a:"zoquete",c:"Persona torpe o ruda.",d:7}]};
-
-  /* Voz (TTS) */
-  function speak(text){
-    try{
-      if(!state.tts||!('speechSynthesis'in window)||state.paused||state.turnBreak) return;
-      const u=new SpeechSynthesisUtterance(text); u.lang='es-ES';
-      if(state.voice) u.voice=state.voice; u.rate=1; u.pitch=1;
-      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-    }catch(e){}
-  }
-  function pickVoice(){ if(!('speechSynthesis'in window)) return;
-    const vs=window.speechSynthesis.getVoices(); const es=vs.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('es'));
-    state.voice = es.find(v=>/es[-_]es/i.test(v.lang)) || es[0] || null; }
-  if('speechSynthesis'in window){ window.speechSynthesis.onvoiceschanged=pickVoice; pickVoice(); }
-
-  /* Sonidos */
-  function tone(freq=880, dur=0.25, type='sine'){
-    if(!state.sounds) return;
-    try{
-      const C=window.AudioContext||window.webkitAudioContext; if(!C) return;
-      const ctx=new C(), o=ctx.createOscillator(), g=ctx.createGain();
-      o.type=type; o.frequency.value=freq; g.gain.value=0.0001; o.connect(g); g.connect(ctx.destination);
-      const t=ctx.currentTime; g.gain.exponentialRampToValueAtTime(0.2, t+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
-      o.start(t); o.stop(t+dur+0.02); setTimeout(()=>ctx.close(), (dur*1000)+80);
-    }catch(e){}
-  }
-  const ding=()=>tone(880,0.25,'sine');     // pasapalabra
-  const buzz=()=>tone(220,0.28,'sawtooth'); // fallo
-
-  /* STT */
-  function initSTT(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return null;
-    const rec=new SR(); rec.lang='es-ES'; rec.interimResults=false; rec.maxAlternatives=1;
-    rec.onresult=ev=>{ const txt=norm(ev.results[0][0].transcript);
-      if(txt.includes('pasapalabra')||txt==='paso'||txt==='paso palabra'){ doPass(); return; }
-      $('#answer').value=txt; submitAnswer(); };
-    return rec;
-  }
-
-  /* Utilidades de índice */
-  function nextPending(side, fromIdx){
-    const n=state.rosco[side].length;
-    for(let k=1;k<=n;k++){
-      const j=(fromIdx + k) % n;
-      if(state.rosco[side][j].status==='pending') return j;
-    }
-    return -1; // sin pendientes
-  }
-  function anyPending(side){ return state.rosco[side].some(x=>x.status==='pending'); }
-
-  /* Generar roscos */
-  function makeRoscos(){
-    const A=[],B=[];
-    LETTERS.forEach(L=>{
-      const pool=BANK[L];
-      let picks=[...pool]; if(picks.length<2) picks=picks.concat(pool[0]); picks=pick(2,picks);
-      if(picks[0]===picks[1]) picks[1]=pool[(pool.indexOf(picks[0])+1)%pool.length];
-      A.push({letter:L,clue:picks[0].c,answer:picks[0].a,diff:picks[0].d,status:'pending'});
-      B.push({letter:L,clue:picks[1].c,answer:picks[1].a,diff:picks[1].d,status:'pending'});
-    });
-    ensureHard(A); ensureHard(B);
-    return {A,B};
-  }
-  function ensureHard(r){
-    for(let i=0;i<r.length&&r.filter(x=>x.diff===9).length<5;i++){
-      const L=r[i].letter, hp=BANK[L].filter(x=>x.d===9);
-      if(hp.length){ const p=hp[Math.floor(Math.random()*hp.length)];
-        r[i].clue=p.c; r[i].answer=p.a; r[i].diff=9;
-      }
-    }
-  }
-
-  /* Pintado */
+  /* --------- Dibujo y estado --------- */
   function ringLayout(el,side){
     el.innerHTML='';
-    const n=state.rosco[side].length, r=44;
-    for(let i=0;i<n;i++){
-      const it=state.rosco[side][i], a=(i/n)*Math.PI*2-Math.PI/2, x=50+Math.cos(a)*r, y=50+Math.sin(a)*r;
-      const d=document.createElement('div'); d.className='dot'; d.dataset.letter=it.letter; d.style.left=x+'%'; d.style.top=y+'%';
-      if(it.status==='ok') d.classList.add('ok'); else if(it.status==='bad') d.classList.add('bad');
-      if(i===state.idx[side]&&state.active===side) d.classList.add('active');
+    var n=state.rosco[side].length, r=44;
+    for(var i=0;i<n;i++){
+      var it=state.rosco[side][i], a=(i/n)*Math.PI*2-Math.PI/2, x=50+Math.cos(a)*r, y=50+Math.sin(a)*r;
+      var d=document.createElement('div'); d.className='dot'; d.setAttribute('data-letter', it.letter); d.style.left=x+'%'; d.style.top=y+'%';
+      if(it.status==='ok') d.className+=' ok'; else if(it.status==='bad') d.className+=' bad';
+      if(i===state.idx[side] && state.active===side) d.className+=' active';
       el.appendChild(d);
     }
   }
   function render(){
     ringLayout($('#rA'),'A'); ringLayout($('#rB'),'B');
-    ['A','B'].forEach(s=>{
-      $(s==='A'?'#aOK':'#bOK').textContent=state.rosco[s].filter(x=>x.status==='ok').length;
-      $(s==='A'?'#aBAD':'#bBAD').textContent=state.rosco[s].filter(x=>x.status==='bad').length;
-      $(s==='A'?'#aPEN':'#bPEN').textContent=state.rosco[s].filter(x=>x.status==='pending').length;
-      $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]);
-    });
-    $('#btnMic').disabled=!state.stt||state.paused||state.turnBreak;
-    ['#btnAnswer','#btnPass','#btnGiveUp'].forEach(id=>$(id).disabled=state.paused||state.turnBreak);
+    var Aok=count('A','ok'), Bok=count('B','ok');
+    var Abad=count('A','bad'), Bbad=count('B','bad');
+    var Apen=count('A','pending'), Bpen=count('B','pending');
+    $('#aOK').textContent=Aok; $('#bOK').textContent=Bok;
+    $('#aBAD').textContent=Abad; $('#bBAD').textContent=Bbad;
+    $('#aPEN').textContent=Apen; $('#bPEN').textContent=Bpen;
+    $('#tA').textContent=tfmt(state.time.A); $('#tB').textContent=tfmt(state.time.B);
+    document.body.className=(state.view==='focus'?'view-focus ':'view-dual ')+('focus-'+state.active);
     $('#btnPause').textContent=state.paused?'Reanudar':'Pausar';
     $('#btnPauseFab').textContent=state.paused?'▶️':'⏸️';
-    $('#btnPauseFab').setAttribute('aria-label',state.paused?'Reanudar':'Pausar');
-    $('#btnWrite').classList.toggle('active',state.typingHold);
     $('#writeTag').style.display=state.typingHold?'inline-block':'none';
-    $('#answer').classList.toggle('hold',state.typingHold);
+    var ans=$('#answer'); if(state.typingHold){ ans.classList.add('hold'); } else { ans.classList.remove('hold'); }
   }
+  function count(s,status){ var arr=state.rosco[s], k=0; for(var i=0;i<arr.length;i++){ if(arr[i].status===status) k++; } return k; }
 
-  function labelFor(L){ if(L==='Ñ')return'Contiene eñe'; if(L==='X')return'Contiene equis'; if(L==='Q')return'Con la cu'; if(L==='Y')return'Con la ye'; return `Con la ${L.toLowerCase()}`; }
+  function labelFor(L){ if(L==='Ñ')return'Contiene eñe'; if(L==='X')return'Contiene equis'; if(L==='Q')return'Con la cu'; if(L==='Y')return'Con la ye'; return 'Con la '+L.toLowerCase(); }
   function setClue(){
-    const s=state.active, i=state.idx[s];
-    $('#turnTag').textContent=`Turno: Jugador ${s}`;
-    if(i===-1){ // este jugador no tiene pendientes
-      switchTurn();
-      return;
-    }
-    const it=state.rosco[s][i];
-    const text=`${labelFor(it.letter)}: ${it.clue}`;
-    $('#clue').textContent=text;
-    ringLayout($(state.active==='A'?'#rA':'#rB'),s);
-    speak(text);
+    var s=state.active, i=state.idx[s]; $('#turnTag').textContent='Turno: Jugador '+s;
+    if(i===-1){ switchTurn(); return; }
+    var it=state.rosco[s][i]; $('#clue').textContent=labelFor(it.letter)+': '+it.clue;
+    render();
   }
 
-  /* Cuenta atrás */
-  function startCountdown(then){
-    if(state.counting) return; state.counting=true;
-    $('#ovCount').style.display='grid';
-    let n=3; $('#countNum').textContent=n; if(state.tts) speak(String(n));
-    const id=setInterval(()=>{
-      n--; if(n>0){ $('#countNum').textContent=n; if(state.tts) speak(String(n)); }
-      else { clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then(); }
-    },1000);
+  function nextPending(side, fromIdx){
+    var n=state.rosco[side].length;
+    for(var k=1;k<=n;k++){ var j=(fromIdx+k)%n; if(state.rosco[side][j].status==='pending') return j; }
+    return -1;
   }
 
-  function start(){
-    if(state.running||state.finished) return;
-    state.running=true; state.paused=false; state.turnBreak=false;
-    ['#btnAnswer','#btnPass','#btnGiveUp'].forEach(id=>$(id).disabled=false);
-    $('#answer').focus();
-    if(state.stt&&!state.recognizer) state.recognizer=initSTT();
+  function startTimers(){
     if(state.timer) clearInterval(state.timer);
-    state.timer=setInterval(()=>{
-      if(!state.running||state.paused||state.typingHold||state.turnBreak) return;
-      const s=state.active;
+    state.timer=setInterval(function(){
+      if(!state.running || state.paused || state.typingHold || state.turnBreak) return;
+      var s=state.active;
       if(state.time[s]>0){
-        state.time[s]-=1; $(s==='A'?'#tA':'#tB').textContent=tfmt(state.time[s]);
+        state.time[s]-=1; $('#tA').textContent=tfmt(state.time.A); $('#tB').textContent=tfmt(state.time.B);
         if(state.time[s]===0){ switchTurn(); }
       }
-      if( (state.time.A===0 && state.time.B===0) || (state.idx.A===-1 && state.idx.B===-1) ){
-        endGame();
-      }
+      if( (state.time.A===0 && state.time.B===0) || (state.idx.A===-1 && state.idx.B===-1) ){ endGame(); }
     },1000);
-    setClue();
   }
 
-  function pauseToggle(force){
-    const want=(typeof force==='boolean')? force : !state.paused;
-    state.paused=want; $('#ovPause').style.display=state.paused?'grid':'none';
-    try{ if(state.paused){ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); } }catch(e){}
-    render();
-  }
-  $('#btnResume').onclick=()=>pauseToggle(false);
-
-  function toggleTypingHold(on){
-    const next=(typeof on==='boolean')? on : !state.typingHold;
-    state.typingHold=next;
-    if(next){
-      try{ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); }catch(e){}
-      $('#answer').focus();
-    }
-    render();
+  function start(){ if(state.running||state.finished) return;
+    state.running=true; state.paused=false; state.turnBreak=false;
+    $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false;
+    $('#answer').focus(); setClue(); startTimers();
   }
 
-  /* Cambiar de jugador, saltando quien no pueda jugar */
+  function pauseToggle(force){ var want=(typeof force==='boolean')?force:!state.paused; state.paused=want;
+    $('#ovPause').style.display=state.paused?'grid':'none'; render(); }
+  function toggleTypingHold(on){ state.typingHold=(typeof on==='boolean')?on:!state.typingHold; if(state.typingHold) $('#answer').focus(); render(); }
+
   function switchTurn(){
-    let tries=0;
+    var tries=0;
     do{
-      state.active = (state.active==='A') ? 'B' : 'A';
-      const s=state.active;
-      if(state.time[s]===0 || state.idx[s]===-1){
-        tries++;
-        if(tries>2){ endGame(); return; }
-        continue;
-      }
+      state.active=(state.active==='A')?'B':'A';
+      var s=state.active;
+      if(state.time[s]===0 || state.idx[s]===-1){ tries++; if(tries>2){ endGame(); return; } continue; }
       break;
     }while(true);
     setClue();
   }
 
-  function vib(ms=40){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
-
-  /* Break común (pasapalabra o fallo) */
-  function startBreak(kind){ // 'pass' | 'fail'
+  function startBreak(kind){
     state.turnBreak=true; render();
-    const title=(kind==='pass')?'Pasapalabra':'Fallo';
-    $('#brTitle').textContent=title;
-    $('#brText').textContent='Cambio de turno. Respira…';
+    $('#brTitle').textContent = (kind==='pass')?'Pasapalabra':'Fallo';
+    $('#brText').textContent = 'Cambio de turno. Respira…';
     $('#ovBreak').style.display='grid';
-    try{ if('speechSynthesis'in window) window.speechSynthesis.cancel(); if(state.recognizer) state.recognizer.abort(); }catch(e){}
-    if(state.tts){ speak(`¡${title}!`); } else { (kind==='pass'? ding : buzz)(); }
   }
 
-  /* Responder */
   function submitAnswer(){
     if(!state.running||state.finished) return;
-    const s=state.active, i=state.idx[s]; if(i===-1){ switchTurn(); return; }
-    const it=state.rosco[s][i];
-    const val=norm($('#answer').value); $('#answer').value='';
+    var s=state.active, i=state.idx[s]; if(i===-1){ switchTurn(); return; }
+    var it=state.rosco[s][i];
+    var val=norm($('#answer').value); $('#answer').value='';
     if(state.typingHold) toggleTypingHold(false);
     if(!val){ doPass(); return; }
-    const ok = same(norm(it.answer), val);
-    it.status = ok ? 'ok' : 'bad';
-    if(ok) vib(30); else vib([20,30,20]);
+    var ok=same(norm(it.answer), val);
+    it.status = ok?'ok':'bad';
     render();
-
-    // ¿Ha completado todo bien?
-    if(state.rosco[s].every(x=>x.status==='ok')){ endGame({forceWinner:s,reason:'completo'}); return; }
-
+    if(allOk(s)){ endGame({forceWinner:s}); return; }
     if(ok){
-      // Mantiene el turno y avanza a la siguiente pendiente
-      const next = nextPending(s, i);
-      state.idx[s] = next; // -1 si no quedan pendientes
-      if(next===-1){ // no quedan pendientes para este jugador: pasamos al otro sin overlay
-        switchTurn();
-      }else{
-        setClue();
-      }
+      var next=nextPending(s,i); state.idx[s]=next; if(next===-1){ switchTurn(); } else { setClue(); }
     }else{
-      // Fallo: cambia el turno y esa letra ya no se vuelve a preguntar
-      state.idx[s] = nextPending(s, i);
-      startBreak('fail');
+      state.idx[s]=nextPending(s,i); startBreak('fail');
     }
   }
-
-  /* Pasapalabra */
-  function doPass(){
-    if(!state.running||state.finished) return;
+  function doPass(){ if(!state.running||state.finished) return; if(state.typingHold) toggleTypingHold(false);
+    var s=state.active,i=state.idx[s]; state.idx[s]=nextPending(s,i); startBreak('pass'); }
+  function markFail(){ if(!state.running||state.finished) return;
+    var s=state.active,i=state.idx[s]; if(i===-1){switchTurn();return;}
     if(state.typingHold) toggleTypingHold(false);
-    const s=state.active, i=state.idx[s];
-    // No se responde ahora; se deja pendiente y se avanza el puntero
-    state.idx[s] = nextPending(s, i);
-    startBreak('pass');
-  }
+    state.rosco[s][i].status='bad'; render(); state.idx[s]=nextPending(s,i); startBreak('fail'); }
 
-  /* Marcar fallo manual */
-  function markFail(){
-    if(!state.running||state.finished) return;
-    const s=state.active,i=state.idx[s]; if(i===-1){switchTurn();return;}
-    if(state.typingHold) toggleTypingHold(false);
-    state.rosco[s][i].status='bad'; render();
-    state.idx[s]=nextPending(s,i);
-    startBreak('fail');
-  }
+  function allOk(side){ var arr=state.rosco[side]; for(var k=0;k<arr.length;k++){ if(arr[k].status!=='ok') return false; } return true; }
 
-  function confetti(){
-    const c=document.createElement('canvas'),x=c.getContext('2d');
-    c.width=innerWidth;c.height=innerHeight;c.style.cssText='position:fixed;inset:0;z-index:80;pointer-events:none';
-    document.body.appendChild(c);
-    const colors=['#ffd166','#7c5cff','#1ec28b','#ff5d6c','#66e3ff'];
-    const P=Array.from({length:120},()=>({x:Math.random()*c.width,y:-20-Math.random()*100,r:4+Math.random()*4,c:colors[(Math.random()*colors.length)|0],vx:(Math.random()-.5)*2,vy:2+Math.random()*3,rot:Math.random()*360,vr:(Math.random()*6-3)}));
-    const start=performance.now(),T=1800;
-    function draw(now){
-      x.clearRect(0,0,c.width,c.height);
-      for(const p of P){ p.vy+=0.03;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;
-        x.save();x.translate(p.x,p.y);x.rotate(p.rot*Math.PI/180);
-        x.fillStyle=p.c;x.fillRect(-p.r,-p.r,p.r*2,p.r*2);x.restore(); }
-      if(now-start<T) requestAnimationFrame(draw); else document.body.removeChild(c);
-    }
-    requestAnimationFrame(draw);
-  }
-
-  function endGame(opts={}){
+  function endGame(opts){
     state.finished=true; state.running=false; if(state.timer) clearInterval(state.timer);
-    const Aok=state.rosco.A.filter(x=>x.status==='ok').length, Bok=state.rosco.B.filter(x=>x.status==='ok').length;
-    const Abad=state.rosco.A.filter(x=>x.status==='bad').length, Bbad=state.rosco.B.filter(x=>x.status==='bad').length;
-    let w=null, detail='';
-    if(opts.forceWinner){ w=opts.forceWinner; detail='Completó el rosco'; }
+    var Aok=count('A','ok'), Bok=count('B','ok'); var Abad=count('A','bad'), Bbad=count('B','bad');
+    var w=null, detail='';
+    if(opts && opts.forceWinner){ w=opts.forceWinner; detail=' · Completó el rosco'; }
     else { if(Aok>Bok) w='A'; else if(Bok>Aok) w='B'; else { if(Abad<Bbad) w='A'; else if(Bbad<Abad) w='B'; else w='empate'; } }
-    const R=$('#result'); R.style.display='block';
-    R.innerHTML=(w==='empate')
-      ? `<strong>Empate técnico.</strong> Aciertos: A ${Aok} / B ${Bok}. Fallos: A ${Abad} / B ${Bbad}.`
-      : `<strong>Gana el Jugador ${w}</strong> · Aciertos A ${Aok} / B ${Bok} · Fallos A ${Abad} / B ${Bbad}${detail?` · ${detail}`:''}`;
-    if(w!=='empate') confetti();
-    ['#btnAnswer','#btnPass','#btnGiveUp','#btnMic'].forEach(id=>$(id).disabled=true);
+    var R=$('#result'); R.style.display='block';
+    R.innerHTML=(w==='empate')?('<strong>Empate técnico.</strong> A '+Aok+' / B '+Bok+' · Fallos A '+Abad+' / B '+Bbad)
+                              :('<strong>Gana el Jugador '+w+'</strong> · A '+Aok+' / B '+Bok+' · Fallos A '+Abad+' / B '+Bbad+detail);
+    $('#btnAnswer').disabled=true; $('#btnPass').disabled=true; $('#btnGiveUp').disabled=true;
+  }
+
+  function makeRoscos(){
+    var A=[],B=[];
+    for(var li=0;li<LETTERS.length;li++){
+      var L=LETTERS[li], pool=BANK[L], picks=pick(2,pool);
+      if(picks[0]===picks[1]) picks[1]=pool[(pool.indexOf(picks[0])+1)%pool.length];
+      A.push({letter:L,clue:picks[0].c,answer:picks[0].a,status:'pending'});
+      B.push({letter:L,clue:picks[1].c,answer:picks[1].a,status:'pending'});
+    }
+    return {A:A,B:B};
   }
 
   function newGame(){
-    const r=makeRoscos();
-    state.rosco.A=r.A; state.rosco.B=r.B;
-    state.idx.A=0; state.idx.B=0;
-    state.active='A'; state.finished=false; state.running=false; state.paused=false; state.typingHold=false; state.counting=false; state.turnBreak=false;
+    var r=makeRoscos(); state.rosco.A=r.A; state.rosco.B=r.B;
+    state.idx.A=0; state.idx.B=0; state.active='A';
+    state.finished=false; state.running=false; state.paused=false; state.typingHold=false; state.counting=false; state.turnBreak=false;
     $('#ovPause').style.display='none'; $('#ovCount').style.display='none'; $('#ovBreak').style.display='none';
     render(); setClue();
   }
 
-  // Ajustes
-  const dlg=$('#dlg');
-  $('#btnSettings').onclick=()=>{ $('#rngTime').value=state.time.A; $('#valTime').textContent=state.time.A+' s';
-    $('#chkTTS').checked=state.tts; $('#chkSTT').checked=state.stt; $('#chkFuzzy').checked=state.fuzzy; $('#chkSound').checked=state.sounds; dlg.showModal(); };
-  $('#btnCancel').onclick=()=>dlg.close();
-  $('#rngTime').oninput=e=>$('#valTime').textContent=e.target.value+' s';
-  $('#btnApply').onclick=()=>{ const secs=parseInt($('#rngTime').value,10);
-    state.time.A=secs; state.time.B=secs;
-    state.tts=$('#chkTTS').checked; state.stt=$('#chkSTT').checked; state.fuzzy=$('#chkFuzzy').checked; state.sounds=$('#chkSound').checked;
-    if(state.stt&&!state.recognizer){ state.recognizer=initSTT(); }
-    $('#supportNote').textContent = state.stt ? (state.recognizer ? 'Voz activada. Si no te escucha, concede permiso al micro.' : 'Tu navegador no soporta reconocimiento de voz.') : '';
-    render(); dlg.close(); };
+  /* --------- Cuenta atrás simple --------- */
+  function startCountdown(then){
+    if(state.counting) return; state.counting=true; $('#ovCount').style.display='grid';
+    var n=3; $('#countNum').textContent=n;
+    var id=setInterval(function(){
+      n--; if(n>0){ $('#countNum').textContent=n; }
+      else{ clearInterval(id); $('#ovCount').style.display='none'; state.counting=false; then(); }
+    },1000);
+  }
 
-  // Botones
-  const go=()=>{ startCountdown(start); $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false; };
-  $('#btnStart').onclick=go;
-  $('#btnReadHelp').onclick=()=>speak("Mantén el turno mientras aciertas. Si fallas o dices pasapalabra, hay respiro y pulsas Continuar. No repites la misma letra en tu siguiente turno: sigues por la siguiente y, al cerrar la Z, vuelves por las pendientes.");
-  $('#btnAnswer').onclick=submitAnswer; $('#btnPass').onclick=doPass; $('#btnGiveUp').onclick=markFail;
-  $('#btnPause').onclick=()=>pauseToggle(); $('#btnPauseFab').onclick=()=>pauseToggle();
-  $('#btnNew').onclick=()=>{ if(state.timer) clearInterval(state.timer); state.time.A=145; state.time.B=145; newGame(); };
-  $('#btnMic').onclick=()=>{ if(state.stt&&state.recognizer&&!state.paused&&!state.turnBreak){ try{ state.recognizer.start(); }catch(e){} } };
-  $('#btnWrite').onclick=()=>toggleTypingHold();
+  /* --------- Botones --------- */
+  var dlg=$('#dlg');
+  function openDialog(){ if(dlg.showModal) dlg.showModal(); else dlg.setAttribute('open',''); }
+  function closeDialog(){ if(dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
 
-  // Continuar del respiro → cambiar turno
-  $('#btnContinue').onclick = () => {
-    $('#ovBreak').style.display = 'none';
-    state.turnBreak = false;
-    switchTurn();
-    render();
+  $('#btnSettings').onclick=function(){ $('#rngTime').value=state.time.A; $('#valTime').textContent=state.time.A+' s'; $('#chkFuzzy').checked=state.fuzzy; openDialog(); };
+  $('#btnCancel').onclick=function(){ closeDialog(); };
+  $('#rngTime').oninput=function(e){ $('#valTime').textContent=e.target.value+' s'; };
+  $('#btnApply').onclick=function(){
+    var secs=parseInt($('#rngTime').value,10); state.time.A=secs; state.time.B=secs;
+    state.fuzzy=$('#chkFuzzy').checked; render(); closeDialog();
   };
 
-  document.addEventListener('keydown',e=>{
+  $('#btnStart').onclick=function(){ startCountdown(start); $('#btnAnswer').disabled=false; $('#btnPass').disabled=false; $('#btnGiveUp').disabled=false; };
+  $('#btnAnswer').onclick=submitAnswer; $('#btnPass').onclick=doPass; $('#btnGiveUp').onclick=markFail;
+  $('#btnPause').onclick=function(){ pauseToggle(); }; $('#btnPauseFab').onclick=function(){ pauseToggle(); };
+  $('#btnNew').onclick=function(){ if(state.timer) clearInterval(state.timer); state.time.A=145; state.time.B=145; newGame(); };
+  $('#btnWrite').onclick=function(){ toggleTypingHold(); };
+  $('#btnView').onclick=function(){ state.view=(state.view==='focus')?'dual':'focus'; render(); };
+  $('#btnResume').onclick=function(){ pauseToggle(false); };
+  $('#btnContinue').onclick=function(){ $('#ovBreak').style.display='none'; state.turnBreak=false; switchTurn(); render(); };
+
+  document.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&!e.ctrlKey) submitAnswer();
     if(e.key==='Enter'&&e.ctrlKey) doPass();
     if(e.key==='Escape') pauseToggle();
   });
 
+  /* --------- Arranque --------- */
   newGame();
 
-  // Mostrar errores JS (por si acaso)
-  window.addEventListener('error',e=>{
-    const div=document.createElement('div'); div.style.cssText='position:fixed;left:0;right:0;bottom:0;background:#400;padding:8px;color:#fff;z-index:9999;font-size:12px';
-    div.textContent='Error: '+(e.message||'desconocido'); document.body.appendChild(div); setTimeout(()=>div.remove(),4000);
+  /* Mostrar errores JS arriba si algo peta */
+  window.addEventListener('error',function(e){
+    var div=document.createElement('div'); div.style.cssText='position:fixed;left:0;right:0;top:0;background:#400;padding:8px;color:#fff;z-index:9999;font-size:12px';
+    div.textContent='Error: '+(e.message||'desconocido'); document.body.appendChild(div); setTimeout(function(){ if(div&&div.parentNode) div.parentNode.removeChild(div); },5000);
   });
 })();
 </script>
