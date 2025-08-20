@@ -6,17 +6,15 @@
 <title>PASAPALABRA PARA 2</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --ink:#fff; --ok:#18d07b; --bad:#ff4d63; --accent:#ffd166;
-    --dot:40px; --center-scale:1; --inner-diam:260px; --ctrW:86%;
-  }
+  :root{ --ink:#fff; --ok:#18d07b; --bad:#ff4d63; --accent:#ffd166;
+    --dot:40px; --center-scale:1; --inner-diam:260px; --ctrW:86%; }
   *{box-sizing:border-box} html,body{height:100%}
   body{margin:0;color:var(--ink);font-family:Montserrat,system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial,sans-serif;
        background:linear-gradient(180deg,#1188ff,#0d6af8 55%,#0a56e8)}
   .wrap{max-width:1000px;margin:auto;padding:12px}
   .titleBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
   h1{font-size:clamp(20px,5vw,28px);margin:0;font-weight:900;letter-spacing:.3px}
-  .miniBtns{display:flex;gap:8px}
+  .miniBtns{display:flex;gap:8px;flex-wrap:wrap}
   .mini{border:1px solid #9ecbff66;background:#0a4ed4;color:#fff;border-radius:12px;padding:8px 10px;font-weight:800;cursor:pointer}
 
   .panel{background:linear-gradient(180deg,#0e60ff,#0b52dc);border:1px solid #9ecbff55;border-radius:18px;box-shadow:0 10px 26px #053c9b55;padding:10px;margin-top:8px}
@@ -29,7 +27,6 @@
   .num.bad{background:var(--bad)} .num.pen{background:#fff;color:#0c4ab2}
   .turnTag{background:#fff;color:#0b49c6;border-radius:999px;padding:6px 12px;font-weight:900}
 
-  /* Rosco dimensionado por el lado pequeño del viewport */
   .ringZone{position:relative;width:clamp(260px, min(88vw, 62vh), 560px);aspect-ratio:1/1;margin:12px auto 6px;border-radius:50%;
     background:radial-gradient(circle at 50% 52%, #0b58e3 60%, transparent 61%),
                radial-gradient(circle at 50% 50%, #083fa6 68%, #062f84 70%, transparent 71%);
@@ -41,12 +38,9 @@
   .dot.ok{background:linear-gradient(#71f7c5,#18d07b);border-color:#b8ffe7}
   .dot.bad{background:linear-gradient(#ff95a6,#ff4d63);color:#3c0611;border-color:#ffc7cf}
 
-  /* Centro: columna y centrado */
-  .centerStage{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--center-scale));
+  .centerStage{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--center-scale));
     transform-origin:center; display:grid; gap:8px; justify-items:center; text-align:center;
-    width:var(--inner-diam); max-width:var(--inner-diam); overflow:hidden;
-  }
+    width:var(--inner-diam); max-width:var(--inner-diam); overflow:hidden; }
   .pill{display:inline-block;background:#fff;color:#0b49c6;border-radius:999px;padding:6px 12px;font-weight:900;letter-spacing:.03em;margin:0 auto}
   .field{width:var(--ctrW); margin:0 auto}
   .field input{width:100%;min-width:0;padding:clamp(8px,2vw,11px);border-radius:12px;border:2px solid #8ec2ff99;background:#0a4ed4;color:#fff;font-size:clamp(13px,3vw,16px)}
@@ -65,17 +59,14 @@
   #feedback{min-height:20px;text-align:center;margin:6px 0 2px}
   .toolbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px 0 2px}
 
-  /* Overlays */
   .overlay{position:fixed;inset:0;display:none;place-items:center;z-index:50;background:#042a7acc;padding:18px}
   .ovBox{background:#0a4ed4;border:2px solid #9fd0ff;border-radius:18px;padding:16px 18px;text-align:center;max-width:520px}
   .count{font-size:74px;font-weight:900}
 
-  /* Ganador */
   #ovWin{background:transparent;pointer-events:none}
   #confetti{position:fixed;inset:0;pointer-events:none}
   #winMsg{font-size:clamp(20px,6vw,36px);font-weight:900;color:#fff;text-shadow:0 2px 10px #0007}
 
-  /* Modal nombres */
   .formRow{display:grid;gap:8px;margin:8px 0}
   .formRow input{width:100%;padding:10px;border-radius:10px;border:2px solid #9fd0ff;background:#0b58e3;color:#fff;font-weight:800}
 </style>
@@ -86,6 +77,7 @@
       <h1>PASAPALABRA PARA 2</h1>
       <div class="miniBtns">
         <button class="mini" id="btnNames">👥 Nombres</button>
+        <button class="mini" id="btnVoice" style="display:none">🎤 Voz AUTO: OFF</button>
         <button class="mini" id="btnReset">🔄 Nueva partida</button>
       </div>
     </div>
@@ -176,7 +168,9 @@
 
   const state={ rosco:{A:[],B:[]}, idx:{A:0,B:0}, active:'A',
     time:{A:150,B:150}, running:false, paused:false, typing:false, turning:false, finished:false,
-    tts:true, sounds:true, voice:null, names:{A:'Jugador A', B:'Jugador B'} };
+    tts:true, sounds:true, voice:null, names:{A:'Jugador A', B:'Jugador B'},
+    vrec:{supported:false, enabled:false, active:false, recognition:null}
+  };
 
   /* ===== Audio, vibración & Voz ===== */
   let ACTX=null, unlocked=false;
@@ -204,13 +198,13 @@
   function speak(t){
     try{
       if(!state.tts||!('speechSynthesis'in window))return;
-      if(state.paused||state.turning||state.finished)return;
+      if(state.paused||state.turning||state.finished||state.vrec.active)return; // no hablar si estamos escuchando
       const u=new SpeechSynthesisUtterance(t); u.lang='es-ES'; if(state.voice)u.voice=state.voice;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     }catch(e){}
   }
 
-  /* ===== Definiciones NUEVAS (50) ===== */
+  /* ===== Definiciones (V38 previas) ===== */
   const BANK_A={
     A:{a:"alboroto",c:"Ruido y desorden provocados por una agitación o disputa."},
     B:{a:"branquia",c:"Órgano respiratorio de peces y algunos invertebrados."},
@@ -315,6 +309,53 @@
   }
   function render(){ $('#timer').textContent=tfmt(state.time[state.active]); drawRing(); updateStats(); }
 
+  /* ===== Reconocimiento de voz (auto turno) ===== */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(SR){ state.vrec.supported=true; $('#btnVoice').style.display='inline-block'; }
+  function uiVoiceLabel(){ $('#btnVoice').textContent = '🎤 Voz AUTO: ' + (state.vrec.enabled?'ON':'OFF'); }
+
+  function canAutoListen(){
+    if(!state.vrec.supported || !state.vrec.enabled) return false;
+    if(!state.running || state.paused || state.typing || state.turning || state.finished) return false;
+    if(state.time[state.active]===0) return false;
+    return true;
+  }
+  function stopAutoListen(){
+    try{ if(state.vrec.recognition){ state.vrec.recognition.onresult=null; state.vrec.recognition.onend=null; state.vrec.recognition.onerror=null; state.vrec.recognition.abort(); } }
+    catch(e){} finally{ state.vrec.active=false; }
+  }
+  function startAutoListen(){
+    if(!canAutoListen() || state.vrec.active) return;
+    stopAutoListen();
+    const rec = new SR();
+    state.vrec.recognition = rec;
+    rec.lang='es-ES'; rec.interimResults=false; rec.continuous=false; rec.maxAlternatives=3;
+    // arrancamos un pelín después de mostrar pista para evitar ecos
+    setTimeout(()=>{
+      if(!canAutoListen()) return;
+      try{ rec.start(); state.vrec.active=true; }catch(e){ state.vrec.active=false; return; }
+    }, 500);
+
+    rec.onresult = (ev)=>{
+      let said = '';
+      for(const res of ev.results){ if(res.isFinal){ said = res[0].transcript || ''; break; } }
+      said = norm(said);
+      if(!said){ state.vrec.active=false; return; }
+
+      // ¿pasapalabra?
+      const isPass = said.includes('pasapalabra') || /\bpas[ao]\s*palabra(s)?\b/.test(said);
+      if(isPass){ sPASS(); pass(); }
+      else{
+        // usar la frase completa como intento
+        $('#answer').value = said;
+        submit();
+      }
+      // tras manejar, el ciclo normal volverá a lanzar escucha si procede
+    };
+    rec.onend = ()=>{ state.vrec.active=false; if(canAutoListen()) startAutoListen(); };
+    rec.onerror = ()=>{ state.vrec.active=false; /* reintento suave */ if(canAutoListen()) setTimeout(startAutoListen, 600); };
+  }
+
   /* ===== Juego ===== */
   let timer=null;
 
@@ -323,8 +364,11 @@
     const s=state.active, i=state.idx[s]; if(i===-1){changeTurn();return;}
     const it=state.rosco[s][i];
     $('#letterTag').textContent='Letra '+it.letter;
-    $('#clueBottom').textContent=it.clue; speak(it.clue);
+    $('#clueBottom').textContent=it.clue;
+    speak(it.clue); // (se omite si estamos escuchando)
     render(); redraw();
+    // al mostrar pista, si procede, empezamos a escuchar
+    if(canAutoListen()) startAutoListen();
   }
 
   function nextPending(side,from){
@@ -335,6 +379,7 @@
 
   function hardStop(){
     try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
+    stopAutoListen();
     state.running=false;
   }
 
@@ -347,15 +392,10 @@
       $('#timer').textContent=tfmt(state.time[s]);
 
       if(state.time[s]===0){
-        // Si el otro no puede jugar, el juego termina YA.
-        if(!otherCanPlay(s)){
-          hardStop(); endGame(); return;
-        }
-        // Si el otro sí puede jugar, cambio de turno normal.
+        stopAutoListen();
+        if(!otherCanPlay(s)){ hardStop(); endGame(); return; }
         changeTurn(); return;
       }
-
-      // Final por doble cero o ambos terminados
       if((state.time.A===0&&state.time.B===0)||(sideFinished('A')&&sideFinished('B'))) { hardStop(); endGame(); return; }
     },1000);
   }
@@ -378,6 +418,7 @@
 
   function submit(){
     if(!state.running||state.turning||state.finished) return;
+    stopAutoListen(); // silencio durante la corrección
     const s=state.active,i=state.idx[s]; if(i===-1){changeTurn();return;}
     const it=state.rosco[s][i]; const val=norm($('#answer').value); $('#answer').value='';
     if(state.typing) toggleTyping(false);
@@ -392,17 +433,15 @@
       state.idx[s]=nextPending(s,i);
       $('#feedback').innerHTML='Era: <b>'+it.answer+'</b>';
 
-      // Mostrar correcta un momento
+      const solo = !otherCanPlay(s);
       state.turning=true;
       $('#ansText').textContent=it.answer;
       $('#ovAnswer').style.display='grid';
 
-      const solo = !otherCanPlay(s);
       setTimeout(()=>{
         $('#ovAnswer').style.display='none';
         if(state.finished) return;
         if(solo){
-          // seguir el mismo jugador sin overlay
           state.turning=false;
           setClue(); render(); redraw();
         }else{
@@ -413,9 +452,9 @@
     render(); redraw();
   }
 
-  /* === Pasapalabra con salto suave si solo queda un jugador === */
   function pass(){
     if(!state.running||state.turning||state.finished) return;
+    stopAutoListen();
     if(state.typing) toggleTyping(false);
     const s=state.active,i=state.idx[s];
     const solo = !otherCanPlay(s);
@@ -426,7 +465,7 @@
     state.idx[s]=nxt;
 
     if(solo){
-      setClue(); render(); redraw(); // sin cartel
+      setClue(); render(); redraw();
     }else{
       startBreak('Pasapalabra · cambio de turno'); render(); redraw();
     }
@@ -438,10 +477,7 @@
     state.active=otherOf(state.active);
     state.turning=false;
     speak('Turno de '+state.names[state.active]);
-    // Si al cambiar el otro no puede jugar, evaluar final por seguridad
-    if(!otherCanPlay(otherOf(state.active)) && state.time[state.active]===0){
-      hardStop(); endGame(); return;
-    }
+    if(!otherCanPlay(otherOf(state.active)) && state.time[state.active]===0){ hardStop(); endGame(); return; }
     setClue(); render(); redraw();
   }
 
@@ -471,6 +507,7 @@
   function endGame(opts){
     state.finished=true;
     try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
+    stopAutoListen();
     if(timer) clearInterval(timer);
     $('#ovBreak').style.display='none';
     $('#ovAnswer').style.display='none';
@@ -491,9 +528,14 @@
 
   /* ===== UI ===== */
   function toggleTyping(on){state.typing=(typeof on==='boolean')?on:!state.typing;
-    if(state.typing) $('#answer').focus(); $('#answer').classList.toggle('hold',state.typing); scaleCenter();}
+    if(state.typing) $('#answer').focus(); $('#answer').classList.toggle('hold',state.typing); scaleCenter();
+    if(state.typing) stopAutoListen(); else if(canAutoListen()) startAutoListen();
+  }
   function togglePause(on){state.paused=(typeof on==='boolean')?on:!state.paused;
-    $('#ovPause').style.display=state.paused?'grid':'none';}
+    $('#ovPause').style.display=state.paused?'grid':'none';
+    if(state.paused) stopAutoListen(); else if(canAutoListen()) startAutoListen();
+  }
+
   $('#btnStart').onclick=function(){
     unlock(); if(!state.running){
       $('#ovCount').style.display='grid'; let n=3; $('#countNum').textContent=n; speak('3');
@@ -513,15 +555,8 @@
     if(e.key==='Escape'){togglePause();}
   });
 
-  const fullRedraw=()=>{redraw();};
-  window.addEventListener('resize', fullRedraw);
-  window.addEventListener('orientationchange', ()=>setTimeout(fullRedraw,250));
-  if (window.visualViewport){ ['resize','scroll'].forEach(ev=>visualViewport.addEventListener(ev,()=>setTimeout(fullRedraw,50))); }
-  if(window.ResizeObserver){ new ResizeObserver(()=>scaleCenter()).observe($('#center')); }
-  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(()=>setTimeout(fullRedraw,50)); }
-
-  /* ===== Nombres (localStorage) ===== */
-  const LS_KEY='rosco_names_v38';
+  // Nombres
+  const LS_KEY='rosco_names_v39';
   function loadNames(){ try{const raw=localStorage.getItem(LS_KEY); if(!raw) return;
       const obj=JSON.parse(raw); if(obj.A) state.names.A=obj.A; if(obj.B) state.names.B=obj.B; }catch(e){} }
   function saveNames(){ try{localStorage.setItem(LS_KEY, JSON.stringify(state.names));}catch(e){} }
@@ -536,6 +571,14 @@
   };
   $('#btnReset').onclick=function(){ newMatch(); };
 
+  // Toggle Voz AUTO
+  $('#btnVoice').onclick=function(){
+    state.vrec.enabled = !state.vrec.enabled;
+    if(!state.vrec.enabled) stopAutoListen();
+    uiVoiceLabel();
+    if(state.vrec.enabled && canAutoListen()) startAutoListen();
+  };
+
   /* ===== Nueva partida ===== */
   function buildRoscos(){
     const A=[],B=[];
@@ -547,6 +590,7 @@
     return {A,B};
   }
   function newMatch(){
+    stopAutoListen();
     const r=buildRoscos();
     state.rosco.A=r.A; state.rosco.B=r.B; state.idx.A=0; state.idx.B=0; state.active='A';
     state.running=false; state.paused=false; state.typing=false; state.turning=false; state.finished=false;
@@ -559,8 +603,10 @@
     redraw(); updateStats();
   }
 
+  // Init
   loadNames();
   newMatch();
+  uiVoiceLabel();
 })();
 </script>
 </body>
