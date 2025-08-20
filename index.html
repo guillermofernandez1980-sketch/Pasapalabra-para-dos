@@ -50,6 +50,8 @@
   .btn{border:0;padding:10px 14px;border-radius:14px;cursor:pointer;font-weight:800}
   .btn-ans{background:var(--ok);color:#052;width:var(--ctrW);margin:0 auto}
   .btn-pass{background:#ffffff;color:#0a4ed4;border:2px solid #8fc2ffaa;font-weight:900;width:var(--ctrW);margin:0 auto}
+  .btn-mic{background:#0a4ed4;color:#fff;border:1px solid #9ecfff66;width:var(--ctrW);margin:0 auto}
+  .btn-mic.listening{background:#ffb703;color:#082; border-color:#ffd166}
   .btn-primary{background:#0d7bff;color:#fff;border:1px solid #9ecfff88}
   .btn-ghost{background:#0a4ed4;color:#fff;border:1px solid #9ecfff66}
 
@@ -69,6 +71,13 @@
 
   .formRow{display:grid;gap:8px;margin:8px 0}
   .formRow input{width:100%;padding:10px;border-radius:10px;border:2px solid #9fd0ff;background:#0b58e3;color:#fff;font-weight:800}
+
+  /* Overlay tiempo */
+  #ovTime .ovBox{max-width:560px}
+  .optline{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:8px 0}
+  .optline label{background:#0a4ed4;border:1px solid #9fd0ff66;border-radius:12px;padding:8px 10px;font-weight:800;cursor:pointer}
+  #timeRange{width:100%}
+  .muted{opacity:.9}
 </style>
 </head>
 <body>
@@ -77,7 +86,7 @@
       <h1>PASAPALABRA PARA 2</h1>
       <div class="miniBtns">
         <button class="mini" id="btnNames">👥 Nombres</button>
-        <button class="mini" id="btnVoice" style="display:none">🎤 Voz AUTO: OFF</button>
+        <button class="mini" id="btnTime">⏱️ Tiempo</button>
         <button class="mini" id="btnReset">🔄 Nueva partida</button>
       </div>
     </div>
@@ -85,7 +94,7 @@
     <div class="panel">
       <div class="row">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div class="timer" id="timer">02:30</div>
+          <div class="timer" id="timer">03:00</div>
           <div class="okBub" id="okNow">0</div>
           <span class="turnTag" id="turnTag">Turno: Jugador A</span>
         </div>
@@ -106,6 +115,7 @@
           </div>
           <button class="btn btn-ans" id="btnAnswer" style="display:none">RESPONDER</button>
           <button class="btn btn-pass" id="btnPassBig" style="display:none">PASAPALABRA</button>
+          <button class="btn btn-mic" id="btnPTT" style="display:none">🎤 Mantener para hablar</button>
           <button class="btn btn-primary" id="btnStart">EMPEZAR</button>
         </div>
       </div>
@@ -157,6 +167,26 @@
     </div>
   </div>
 
+  <!-- Modal tiempo -->
+  <div class="overlay" id="ovTime">
+    <div class="ovBox">
+      <h3>Ajustar tiempo</h3>
+      <p class="muted">Elige antes de empezar la partida.</p>
+      <div class="optline">
+        <label><input type="radio" name="tquick" value="150"> 2:30</label>
+        <label><input type="radio" name="tquick" value="180" checked> 3:00</label>
+        <label><input type="radio" name="tquick" value="210"> 3:30</label>
+      </div>
+      <div style="text-align:center;margin:6px 0 4px">Personalizado: <b id="tLabel">3:00</b></div>
+      <input type="range" id="timeRange" min="120" max="300" step="15" value="180" />
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+        <button class="btn btn-primary" id="btnTimeApply">Aplicar</button>
+        <button class="btn" id="btnTimeClose">Cerrar</button>
+      </div>
+      <div id="tWarn" style="margin-top:8px;color:#ffd166;display:none">🔒 Cambia el tiempo antes de empezar.</div>
+    </div>
+  </div>
+
 <script>
 (function(){
   const $ = s => document.querySelector(s);
@@ -167,9 +197,10 @@
   const LETTERS=["A","B","C","D","E","F","G","H","I","J","L","M","N","Ñ","O","P","Q","R","S","T","U","V","X","Y","Z"];
 
   const state={ rosco:{A:[],B:[]}, idx:{A:0,B:0}, active:'A',
-    time:{A:150,B:150}, running:false, paused:false, typing:false, turning:false, finished:false,
+    time:{A:180,B:180}, timeDefault:180,
+    running:false, paused:false, typing:false, turning:false, finished:false,
     tts:true, sounds:true, voice:null, names:{A:'Jugador A', B:'Jugador B'},
-    vrec:{supported:false, enabled:false, active:false, recognition:null}
+    ptt:{supported:false, active:false, rec:null}
   };
 
   /* ===== Audio, vibración & Voz ===== */
@@ -198,13 +229,13 @@
   function speak(t){
     try{
       if(!state.tts||!('speechSynthesis'in window))return;
-      if(state.paused||state.turning||state.finished||state.vrec.active)return; // no hablar si estamos escuchando
+      if(state.paused||state.turning||state.finished||state.ptt.active)return; // no hablar si el micro está escuchando
       const u=new SpeechSynthesisUtterance(t); u.lang='es-ES'; if(state.voice)u.voice=state.voice;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     }catch(e){}
   }
 
-  /* ===== Definiciones (V38 previas) ===== */
+  /* ===== Definiciones (las últimas buenas) ===== */
   const BANK_A={
     A:{a:"alboroto",c:"Ruido y desorden provocados por una agitación o disputa."},
     B:{a:"branquia",c:"Órgano respiratorio de peces y algunos invertebrados."},
@@ -309,52 +340,46 @@
   }
   function render(){ $('#timer').textContent=tfmt(state.time[state.active]); drawRing(); updateStats(); }
 
-  /* ===== Reconocimiento de voz (auto turno) ===== */
+  /* ===== Reconocimiento: Pulsar-para-hablar ===== */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(SR){ state.vrec.supported=true; $('#btnVoice').style.display='inline-block'; }
-  function uiVoiceLabel(){ $('#btnVoice').textContent = '🎤 Voz AUTO: ' + (state.vrec.enabled?'ON':'OFF'); }
-
-  function canAutoListen(){
-    if(!state.vrec.supported || !state.vrec.enabled) return false;
-    if(!state.running || state.paused || state.typing || state.turning || state.finished) return false;
-    if(state.time[state.active]===0) return false;
-    return true;
+  if(SR){ state.ptt.supported=true; $('#btnPTT').style.display='inline-block'; }
+  function stopPTT(){
+    try{
+      if(state.ptt.rec){ state.ptt.rec.onresult=null; state.ptt.rec.onend=null; state.ptt.rec.onerror=null; state.ptt.rec.abort(); }
+    }catch(e){} finally{ state.ptt.active=false; $('#btnPTT').classList.remove('listening'); }
   }
-  function stopAutoListen(){
-    try{ if(state.vrec.recognition){ state.vrec.recognition.onresult=null; state.vrec.recognition.onend=null; state.vrec.recognition.onerror=null; state.vrec.recognition.abort(); } }
-    catch(e){} finally{ state.vrec.active=false; }
-  }
-  function startAutoListen(){
-    if(!canAutoListen() || state.vrec.active) return;
-    stopAutoListen();
+  function startPTT(){
+    if(!SR || state.paused || state.turning || state.finished) return;
+    stopPTT();
     const rec = new SR();
-    state.vrec.recognition = rec;
+    state.ptt.rec = rec;
     rec.lang='es-ES'; rec.interimResults=false; rec.continuous=false; rec.maxAlternatives=3;
-    // arrancamos un pelín después de mostrar pista para evitar ecos
-    setTimeout(()=>{
-      if(!canAutoListen()) return;
-      try{ rec.start(); state.vrec.active=true; }catch(e){ state.vrec.active=false; return; }
-    }, 500);
+    try{ rec.start(); state.ptt.active=true; $('#btnPTT').classList.add('listening'); }catch(e){ state.ptt.active=false; return; }
+    // no TTS mientras escuchamos
+    try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
 
     rec.onresult = (ev)=>{
       let said = '';
       for(const res of ev.results){ if(res.isFinal){ said = res[0].transcript || ''; break; } }
       said = norm(said);
-      if(!said){ state.vrec.active=false; return; }
-
-      // ¿pasapalabra?
+      state.ptt.active=false; $('#btnPTT').classList.remove('listening');
+      if(!said) return;
       const isPass = said.includes('pasapalabra') || /\bpas[ao]\s*palabra(s)?\b/.test(said);
       if(isPass){ sPASS(); pass(); }
-      else{
-        // usar la frase completa como intento
-        $('#answer').value = said;
-        submit();
-      }
-      // tras manejar, el ciclo normal volverá a lanzar escucha si procede
+      else{ $('#answer').value = said; submit(); }
     };
-    rec.onend = ()=>{ state.vrec.active=false; if(canAutoListen()) startAutoListen(); };
-    rec.onerror = ()=>{ state.vrec.active=false; /* reintento suave */ if(canAutoListen()) setTimeout(startAutoListen, 600); };
+    rec.onend = ()=>{ state.ptt.active=false; $('#btnPTT').classList.remove('listening'); };
+    rec.onerror = ()=>{ state.ptt.active=false; $('#btnPTT').classList.remove('listening'); };
   }
+
+  // Soporte mantener pulsado + tap para alternar
+  const micBtn = $('#btnPTT');
+  micBtn.addEventListener('pointerdown', e=>{ e.preventDefault(); startPTT(); });
+  micBtn.addEventListener('pointerup',   e=>{ e.preventDefault(); stopPTT(); });
+  micBtn.addEventListener('pointerleave',e=>{ e.preventDefault(); stopPTT(); });
+  micBtn.addEventListener('click', e=>{ // por si algún navegador ignora pointer
+    if(state.ptt.active) stopPTT(); else startPTT();
+  });
 
   /* ===== Juego ===== */
   let timer=null;
@@ -365,10 +390,8 @@
     const it=state.rosco[s][i];
     $('#letterTag').textContent='Letra '+it.letter;
     $('#clueBottom').textContent=it.clue;
-    speak(it.clue); // (se omite si estamos escuchando)
+    speak(it.clue);
     render(); redraw();
-    // al mostrar pista, si procede, empezamos a escuchar
-    if(canAutoListen()) startAutoListen();
   }
 
   function nextPending(side,from){
@@ -379,7 +402,7 @@
 
   function hardStop(){
     try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
-    stopAutoListen();
+    stopPTT();
     state.running=false;
   }
 
@@ -392,7 +415,7 @@
       $('#timer').textContent=tfmt(state.time[s]);
 
       if(state.time[s]===0){
-        stopAutoListen();
+        stopPTT();
         if(!otherCanPlay(s)){ hardStop(); endGame(); return; }
         changeTurn(); return;
       }
@@ -418,7 +441,7 @@
 
   function submit(){
     if(!state.running||state.turning||state.finished) return;
-    stopAutoListen(); // silencio durante la corrección
+    stopPTT();
     const s=state.active,i=state.idx[s]; if(i===-1){changeTurn();return;}
     const it=state.rosco[s][i]; const val=norm($('#answer').value); $('#answer').value='';
     if(state.typing) toggleTyping(false);
@@ -454,7 +477,7 @@
 
   function pass(){
     if(!state.running||state.turning||state.finished) return;
-    stopAutoListen();
+    stopPTT();
     if(state.typing) toggleTyping(false);
     const s=state.active,i=state.idx[s];
     const solo = !otherCanPlay(s);
@@ -494,7 +517,8 @@
     let stop=false;
     (function loop(){
       if(stop) return;
-      cx.clearRect(0,0,innerWidth,innerHeight);
+      const W=innerWidth,H=innerHeight;
+      cx.clearRect(0,0,W,H);
       parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.02; p.rot+=p.vr;
         cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot);
         cx.fillStyle=p.c; cx.fillRect(-p.r,-p.r,p.r*2,p.r*2); cx.restore();
@@ -507,7 +531,7 @@
   function endGame(opts){
     state.finished=true;
     try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
-    stopAutoListen();
+    stopPTT();
     if(timer) clearInterval(timer);
     $('#ovBreak').style.display='none';
     $('#ovAnswer').style.display='none';
@@ -529,11 +553,11 @@
   /* ===== UI ===== */
   function toggleTyping(on){state.typing=(typeof on==='boolean')?on:!state.typing;
     if(state.typing) $('#answer').focus(); $('#answer').classList.toggle('hold',state.typing); scaleCenter();
-    if(state.typing) stopAutoListen(); else if(canAutoListen()) startAutoListen();
+    if(state.typing) stopPTT();
   }
   function togglePause(on){state.paused=(typeof on==='boolean')?on:!state.paused;
     $('#ovPause').style.display=state.paused?'grid':'none';
-    if(state.paused) stopAutoListen(); else if(canAutoListen()) startAutoListen();
+    if(state.paused) stopPTT();
   }
 
   $('#btnStart').onclick=function(){
@@ -556,7 +580,7 @@
   });
 
   // Nombres
-  const LS_KEY='rosco_names_v39';
+  const LS_KEY='rosco_names_v40';
   function loadNames(){ try{const raw=localStorage.getItem(LS_KEY); if(!raw) return;
       const obj=JSON.parse(raw); if(obj.A) state.names.A=obj.A; if(obj.B) state.names.B=obj.B; }catch(e){} }
   function saveNames(){ try{localStorage.setItem(LS_KEY, JSON.stringify(state.names));}catch(e){} }
@@ -571,12 +595,22 @@
   };
   $('#btnReset').onclick=function(){ newMatch(); };
 
-  // Toggle Voz AUTO
-  $('#btnVoice').onclick=function(){
-    state.vrec.enabled = !state.vrec.enabled;
-    if(!state.vrec.enabled) stopAutoListen();
-    uiVoiceLabel();
-    if(state.vrec.enabled && canAutoListen()) startAutoListen();
+  // Tiempo
+  $('#btnTime').onclick=function(){ $('#ovTime').style.display='grid'; };
+  $('#btnTimeClose').onclick=function(){ $('#ovTime').style.display='none'; };
+  const tLabel=$('#tLabel'), tRange=$('#timeRange');
+  function updLabel(sec){ tLabel.textContent=tfmt(sec); }
+  updLabel(tRange.value);
+  tRange.oninput=function(){ updLabel(+tRange.value); document.querySelectorAll('input[name="tquick"]').forEach(r=>r.checked=false); };
+  document.querySelectorAll('input[name="tquick"]').forEach(r=>{
+    r.onchange=function(){ if(this.checked){ tRange.value=this.value; updLabel(+this.value); } };
+  });
+  $('#btnTimeApply').onclick=function(){
+    if(state.running){ $('#tWarn').style.display='block'; return; }
+    const v=+tRange.value|0;
+    state.timeDefault=v; state.time.A=v; state.time.B=v;
+    $('#timer').textContent=tfmt(v);
+    $('#ovTime').style.display='none';
   };
 
   /* ===== Nueva partida ===== */
@@ -590,23 +624,23 @@
     return {A,B};
   }
   function newMatch(){
-    stopAutoListen();
+    stopPTT();
     const r=buildRoscos();
     state.rosco.A=r.A; state.rosco.B=r.B; state.idx.A=0; state.idx.B=0; state.active='A';
     state.running=false; state.paused=false; state.typing=false; state.turning=false; state.finished=false;
+    state.time.A=state.time.B=state.timeDefault;
     $('#result').innerHTML=''; $('#feedback').innerHTML='';
     $('#btnStart').style.display='inline-block'; $('#fieldRow').style.display='none';
     $('#btnAnswer').style.display='none'; $('#btnPassBig').style.display='none'; $('#answer').value='';
     $('#letterTag').textContent='Pulsa EMPEZAR';
-    $('#clueBottom').textContent='Mantienes el turno mientras aciertes. Di “pasapalabra” para ceder turno.';
-    state.time.A=state.time.B=150; $('#timer').textContent=tfmt(150);
+    $('#clueBottom').textContent='Mantienes el turno mientras aciertes. Di “pasapalabra” o usa el micro.';
+    $('#timer').textContent=tfmt(state.timeDefault);
     redraw(); updateStats();
   }
 
   // Init
   loadNames();
   newMatch();
-  uiVoiceLabel();
 })();
 </script>
 </body>
