@@ -29,6 +29,7 @@
   .num.bad{background:var(--bad)} .num.pen{background:#fff;color:#0c4ab2}
   .turnTag{background:#fff;color:#0b49c6;border-radius:999px;padding:6px 12px;font-weight:900}
 
+  /* Rosco dimensionado por el lado pequeño del viewport */
   .ringZone{position:relative;width:clamp(260px, min(88vw, 62vh), 560px);aspect-ratio:1/1;margin:12px auto 6px;border-radius:50%;
     background:radial-gradient(circle at 50% 52%, #0b58e3 60%, transparent 61%),
                radial-gradient(circle at 50% 50%, #083fa6 68%, #062f84 70%, transparent 71%);
@@ -40,6 +41,7 @@
   .dot.ok{background:linear-gradient(#71f7c5,#18d07b);border-color:#b8ffe7}
   .dot.bad{background:linear-gradient(#ff95a6,#ff4d63);color:#3c0611;border-color:#ffc7cf}
 
+  /* Centro: columna y centrado */
   .centerStage{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--center-scale));
     transform-origin:center; display:grid; gap:8px; justify-items:center; text-align:center;
@@ -63,13 +65,19 @@
   #feedback{min-height:20px;text-align:center;margin:6px 0 2px}
   .toolbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px 0 2px}
 
+  /* Overlays */
   .overlay{position:fixed;inset:0;display:none;place-items:center;z-index:50;background:#042a7acc;padding:18px}
   .ovBox{background:#0a4ed4;border:2px solid #9fd0ff;border-radius:18px;padding:16px 18px;text-align:center;max-width:520px}
   .count{font-size:74px;font-weight:900}
 
+  /* Ganador */
   #ovWin{background:transparent;pointer-events:none}
   #confetti{position:fixed;inset:0;pointer-events:none}
   #winMsg{font-size:clamp(20px,6vw,36px);font-weight:900;color:#fff;text-shadow:0 2px 10px #0007}
+
+  /* Modal nombres */
+  .formRow{display:grid;gap:8px;margin:8px 0}
+  .formRow input{width:100%;padding:10px;border-radius:10px;border:2px solid #9fd0ff;background:#0b58e3;color:#fff;font-weight:800}
 </style>
 </head>
 <body>
@@ -98,6 +106,7 @@
       <div class="ringZone" id="ring">
         <div class="ringDots" id="ringDots"></div>
 
+        <!-- Centro -->
         <div class="centerStage" id="center">
           <div class="pill" id="letterTag">Pulsa EMPEZAR</div>
           <div class="field" id="fieldRow" style="display:none">
@@ -125,8 +134,10 @@
   <div class="overlay" id="ovCount"><div class="ovBox"><div class="count" id="countNum">3</div><p>Preparados…</p></div></div>
   <div class="overlay" id="ovBreak"><div class="ovBox"><h3 id="brTitle">Cambio de turno</h3><p id="brText">Respira…</p><button class="btn btn-primary" id="btnContinue">Continuar</button></div></div>
 
+  <!-- Correcta al fallar -->
   <div class="overlay" id="ovAnswer"><div class="ovBox"><h3>Respuesta correcta</h3><p id="ansText" style="font-size:22px;font-weight:900;margin:6px 0 0"></p></div></div>
 
+  <!-- Ganador -->
   <div class="overlay" id="ovWin">
     <canvas id="confetti"></canvas>
     <div class="ovBox" style="background:transparent;border:none;box-shadow:none">
@@ -158,7 +169,8 @@
 (function(){
   const $ = s => document.querySelector(s);
   const pad2=n=>(n<10?'0':'')+n;
-  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  const norm=s=>(s||'').toLowerCase().normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const tfmt=sec=>{const m=Math.floor(sec/60),s=Math.floor(sec%60);return pad2(m)+':'+pad2(s);};
   const LETTERS=["A","B","C","D","E","F","G","H","I","J","L","M","N","Ñ","O","P","Q","R","S","T","U","V","X","Y","Z"];
 
@@ -168,24 +180,91 @@
 
   /* ===== Audio, vibración & Voz ===== */
   let ACTX=null, unlocked=false;
-  function ctx(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return null; if(!ACTX) ACTX=new C(); if(ACTX.state==='suspended') ACTX.resume(); return ACTX;}catch(e){return null}}
-  function unlock(){ if(unlocked) return; const c=ctx(); if(!c) return; try{const o=c.createOscillator(),g=c.createGain();g.gain.value=0;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.01);unlocked=true;}catch(e){} }
+  function ctx(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;
+       if(!ACTX) ACTX=new C(); if(ACTX.state==='suspended') ACTX.resume(); return ACTX;}catch(e){return null}}
+  function unlock(){ if(unlocked) return; const c=ctx(); if(!c) return;
+    try{const o=c.createOscillator(),g=c.createGain();g.gain.value=0;o.connect(g);g.connect(c.destination);
+      o.start();o.stop(c.currentTime+0.01);unlocked=true;}catch(e){} }
   ['touchstart','mousedown'].forEach(ev=>document.addEventListener(ev,unlock,{once:true,passive:true}));
   const tone=(f,d,t)=>{ if(!state.sounds) return; const c=ctx(); if(!c) return;
-    const o=c.createOscillator(),g=c.createGain(); o.type=t||'sine'; o.frequency.value=f; g.gain.value=0.0001; o.connect(g); g.connect(c.destination);
-    const t0=c.currentTime; g.gain.exponentialRampToValueAtTime(0.18,t0+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t0+d); o.start(t0); o.stop(t0+d+0.02);
+    const o=c.createOscillator(),g=c.createGain(); o.type=t||'sine'; o.frequency.value=f; g.gain.value=0.0001;
+    o.connect(g); g.connect(c.destination);
+    const t0=c.currentTime; g.gain.exponentialRampToValueAtTime(0.18,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+d); o.start(t0); o.stop(t0+d+0.02);
   };
   const vib = pat => { try{ if(navigator.vibrate) navigator.vibrate(pat);}catch(e){} };
   const sOK =()=>{tone(1046,0.18,'triangle'); vib(80);};
   const sBAD=()=>{tone(196,0.32,'sawtooth'); vib([120,60,80]);};
   const sPASS=()=>{tone(660,0.18,'square'); vib(60);};
-  function pickVoice(){if(!('speechSynthesis'in window))return;const vs=speechSynthesis.getVoices();const es=vs.filter(v=>v.lang&&v.lang.toLowerCase().indexOf('es')===0);state.voice=es.find(v=>/es[-_]es/i.test(v.lang))||es[0]||null;}
+  function pickVoice(){if(!('speechSynthesis'in window))return;
+    const vs=speechSynthesis.getVoices();
+    const es=vs.filter(v=>v.lang&&v.lang.toLowerCase().indexOf('es')===0);
+    state.voice=es.find(v=>/es[-_]es/i.test(v.lang))||es[0]||null;}
   if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=pickVoice;pickVoice();}
-  function speak(t){try{if(!state.tts||!('speechSynthesis'in window))return;if(state.paused||state.turning)return;const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';if(state.voice)u.voice=state.voice;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+  function speak(t){
+    try{
+      if(!state.tts||!('speechSynthesis'in window))return;
+      if(state.paused||state.turning||state.finished)return;
+      const u=new SpeechSynthesisUtterance(t); u.lang='es-ES'; if(state.voice)u.voice=state.voice;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }catch(e){}
+  }
 
-  /* ===== Definiciones (50) ===== */
-  const BANK_A={A:{a:"afeitar",c:"Cortar a alguien a ras de la piel la barba, el bigote o el pelo de cualquier parte del cuerpo.",alt:["rasurar"]},B:{a:"bisturi",c:"Instrumento quirúrgico muy afilado para cortar tejidos."},C:{a:"cenit",c:"Punto más alto del cielo sobre la vertical del observador."},D:{a:"dique",c:"Construcción que detiene o controla el paso del agua."},E:{a:"ermitano",c:"Persona que vive retirada y en soledad.",alt:["ermitaño","anacoreta"]},F:{a:"fugaz",c:"Que dura muy poco."},G:{a:"gargola",c:"Canal o figura que evacua el agua en los tejados de templos y edificios."},H:{a:"hectarea",c:"Unidad de superficie equivalente a 10.000 m²."},I:{a:"inmutable",c:"Que no cambia con el tiempo."},J:{a:"juramento",c:"Promesa solemne con testigos o ante una autoridad."},L:{a:"linterna",c:"Aparato portátil que emite luz."},M:{a:"madrugada",c:"Horas que siguen a la medianoche hasta el amanecer."},N:{a:"nomada",c:"Que no tiene residencia fija y se desplaza."},"Ñ":{a:"companero",c:"Persona con la que se comparte trabajo o estudio. (contiene eñe)",alt:["companera"]},O:{a:"oraculo",c:"Respuesta que daba una deidad; también el santuario."},P:{a:"parapeto",c:"Baranda o murete que sirve de defensa."},Q:{a:"queroseno",c:"Combustible líquido derivado del petróleo.",alt:["querosene"]},R:{a:"renacuajo",c:"Larva de los anfibios, especialmente de la rana."},S:{a:"sagaz",c:"Agudo y prudente para comprender y prever."},T:{a:"tertulia",c:"Reunión habitual de personas para conversar."},U:{a:"ubicar",c:"Situar o colocar en un lugar."},V:{a:"vestibulo",c:"Sala de entrada de un edificio o vivienda."},X:{a:"expediente",c:"Conjunto de documentos de un asunto. (contiene equis)"},Y:{a:"yacer",c:"Estar echado; estar un cadáver en la sepultura."},Z:{a:"zocalo",c:"Parte inferior de un muro o pared."}};
-  const BANK_B={A:{a:"apoteosis",c:"Culminación o momento de mayor brillo de algo."},B:{a:"baldio",c:"Terreno que no se cultiva o es improductivo."},C:{a:"cauterio",c:"Quemadura terapéutica por calor o sustancias."},D:{a:"disonancia",c:"Falta de acuerdo u armonía."},E:{a:"estuario",c:"Desembocadura amplia de un río que se mezcla con el mar."},F:{a:"frontera",c:"Límite que separa dos territorios."},G:{a:"geiser",c:"Manantial que expulsa periódicamente agua caliente y vapor.",alt:["geyser"]},H:{a:"hondonada",c:"Paraje más bajo que el terreno que lo rodea."},I:{a:"insomne",c:"Que padece falta de sueño."},J:{a:"jabalina",c:"Arma arrojadiza; también prueba atlética."},L:{a:"longevo",c:"De mucha edad o que llega a viejo con buena salud."},M:{a:"meticuloso",c:"Que pone cuidado minucioso en lo que hace."},N:{a:"nubarron",c:"Nube grande y oscura que presagia tormenta."},"Ñ":{a:"montana",c:"Gran elevación natural del terreno. (contiene eñe)"},O:{a:"oceano",c:"Gran masa de agua salada de la Tierra."},P:{a:"prudencia",c:"Sensatez para actuar con moderación."},Q:{a:"quinquenio",c:"Periodo de cinco años."},R:{a:"remora",c:"Obstáculo que retrasa algo; también pez adherente."},S:{a:"sopor",c:"Somnolencia profunda."},T:{a:"tenue",c:"De poca intensidad o débil."},U:{a:"urticaria",c:"Afección cutánea con ronchas que pican."},V:{a:"voragine",c:"Remolino impetuoso de agua; confusión."},X:{a:"exprimir",c:"Sacar jugo apretando. (contiene equis)"},Y:{a:"yema",c:"Parte amarilla del huevo; extremo blando del dedo."},Z:{a:"zigurat",c:"Templo escalonado mesopotámico.",alt:["ziggurat"]}};
+  /* ===== Definiciones NUEVAS (50) ===== */
+  const BANK_A={
+    A:{a:"alboroto",c:"Ruido y desorden provocados por una agitación o disputa."},
+    B:{a:"branquia",c:"Órgano respiratorio de peces y algunos invertebrados."},
+    C:{a:"cicerone",c:"Guía que explica a los visitantes lo notable de un lugar."},
+    D:{a:"dorsal",c:"Relativo a la espalda o parte posterior de algo."},
+    E:{a:"equinoccio",c:"Momento del año en que el día y la noche tienen igual duración."},
+    F:{a:"frugal",c:"Sencillo y de poco gasto o cosa parca en comer y vivir."},
+    G:{a:"glaciar",c:"Masa de hielo que se desliza lentamente por una pendiente."},
+    H:{a:"horizonte",c:"Línea aparente donde parecen juntarse cielo y tierra."},
+    I:{a:"incipiente",c:"Que está empezando o dando los primeros pasos."},
+    J:{a:"jornada",c:"Día de trabajo o tiempo que dura."},
+    L:{a:"lexico",c:"Conjunto de palabras de una lengua o campo."},
+    M:{a:"magma",c:"Roca fundida en el interior de la Tierra."},
+    N:{a:"nebulosa",c:"Nube interestelar de gas y polvo donde nacen estrellas."},
+    "Ñ":{a:"arana",c:"Arácnido de ocho patas que teje telas. (contiene eñe)",alt:["araña"]},
+    O:{a:"orografia",c:"Conjunto de montes, valles y relieves de un territorio."},
+    P:{a:"paradoja",c:"Proposición que parece contradictoria pero puede ser verdadera."},
+    Q:{a:"quimera",c:"Sueño, ilusión o proyecto irrealizable."},
+    R:{a:"retorica",c:"Arte de hablar y escribir con corrección y elegancia."},
+    S:{a:"sinergia",c:"Acción conjunta que produce un efecto mayor que la suma de las partes."},
+    T:{a:"troposfera",c:"Capa más baja de la atmósfera terrestre."},
+    U:{a:"ultravioleta",c:"Radiación electromagnética de menor longitud de onda que la violeta."},
+    V:{a:"vendimia",c:"Época o acción de recoger la uva."},
+    X:{a:"xilofono",c:"Instrumento musical de láminas afinadas. (contiene equis)",alt:["xilófono"]},
+    Y:{a:"yodo",c:"Elemento químico halógeno de símbolo I."},
+    Z:{a:"zigzag",c:"Línea quebrada con ángulos que alternan su dirección."}
+  };
+  const BANK_B={
+    A:{a:"anagrama",c:"Cambio del orden de las letras de una palabra para formar otra."},
+    B:{a:"bitacora",c:"Cuaderno de navegación; hoy, diario de actividades.",alt:["bitácora"]},
+    C:{a:"cataclismo",c:"Desastre o perturbación de gran alcance."},
+    D:{a:"dicotomia",c:"División de un concepto en dos partes opuestas.",alt:["dicotomía"]},
+    E:{a:"efimero",c:"Que dura muy poco tiempo.",alt:["efímero"]},
+    F:{a:"fecundo",c:"Que produce o puede producir en abundancia."},
+    G:{a:"gramatica",c:"Estudio de las reglas de una lengua.",alt:["gramática"]},
+    H:{a:"heraldo",c:"Mensajero que anuncia o trae noticias importantes."},
+    I:{a:"inercia",c:"Tendencia a mantener el estado de reposo o movimiento."},
+    J:{a:"jadeo",c:"Respiración agitada y entrecortada."},
+    L:{a:"linaje",c:"Ascendencia o descendencia de una familia."},
+    M:{a:"mecenas",c:"Persona que protege y financia a artistas o científicos."},
+    N:{a:"nadir",c:"Punto del cielo opuesto al cenit, bajo el observador."},
+    "Ñ":{a:"campina",c:"Terreno llano y extenso de cultivos. (contiene eñe)",alt:["campiña"]},
+    O:{a:"orbita",c:"Trayectoria que sigue un cuerpo alrededor de otro.",alt:["órbita"]},
+    P:{a:"palindromo",c:"Palabra o frase que se lee igual en ambos sentidos.",alt:["palíndromo"]},
+    Q:{a:"quorum",c:"Número mínimo de asistentes para deliberar válidamente.",alt:["quórum"]},
+    R:{a:"resarcir",c:"Indemnizar o compensar un daño."},
+    S:{a:"silente",c:"Que guarda silencio; callado."},
+    T:{a:"tenacidad",c:"Firmeza y constancia para alcanzar un fin."},
+    U:{a:"unguento",c:"Preparado espeso que se aplica sobre la piel.",alt:["ungüento"]},
+    V:{a:"verosimil",c:"Que parece verdadero o creíble.",alt:["verosímil"]},
+    X:{a:"axila",c:"Parte del cuerpo situada bajo la unión del brazo con el tronco. (contiene equis)"},
+    Y:{a:"yacimiento",c:"Lugar donde se encuentran restos arqueológicos o minerales."},
+    Z:{a:"zarzamora",c:"Planta espinosa que da moras; también su fruto."}
+  };
 
   const clueFor=(L,def)=> L==='Ñ' ? 'Contiene eñe: '+def
                      : L==='X' ? 'Contiene equis: '+def
@@ -193,6 +272,7 @@
                      : L==='Y' ? 'Con la ye: '+def
                      : 'Empieza por '+L.toLowerCase()+': '+def;
 
+  /* ===== Dibujo & encaje ===== */
   function drawRing(){
     const host=$('#ringDots'); host.innerHTML='';
     const arr=state.rosco[state.active], n=arr.length, R=47;
@@ -224,6 +304,9 @@
 
   const count=(side,st)=>state.rosco[side].reduce((k,it)=>k+(it.status===st),0);
   const sideFinished=side=>count(side,'pending')===0;
+  const otherOf=s=> (s==='A'?'B':'A');
+  const otherCanPlay=s=> (state.time[otherOf(s)]>0) && !sideFinished(otherOf(s));
+
   function updateStats(){
     $('#okNow').textContent=count(state.active,'ok');
     $('#badTotal').textContent=count('A','bad')+count('B','bad');
@@ -234,25 +317,49 @@
 
   /* ===== Juego ===== */
   let timer=null;
-  const setClue=()=>{
+
+  function setClue(){
+    if(state.finished) return;
     const s=state.active, i=state.idx[s]; if(i===-1){changeTurn();return;}
     const it=state.rosco[s][i];
     $('#letterTag').textContent='Letra '+it.letter;
-    $('#clueBottom').textContent=it.clue; if(state.tts) speak(it.clue);
+    $('#clueBottom').textContent=it.clue; speak(it.clue);
     render(); redraw();
-  };
-  function nextPending(side,from){ const n=state.rosco[side].length;
-    for(let k=1;k<=n;k++){const j=(from+k)%n; if(state.rosco[side][j].status==='pending') return j;} return -1; }
+  }
+
+  function nextPending(side,from){
+    const n=state.rosco[side].length;
+    for(let k=1;k<=n;k++){const j=(from+k)%n; if(state.rosco[side][j].status==='pending') return j;}
+    return -1;
+  }
+
+  function hardStop(){
+    try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
+    state.running=false;
+  }
 
   function startTimers(){
     if(timer) clearInterval(timer);
     timer=setInterval(()=>{
-      if(!state.running||state.paused||state.typing||state.turning) return;
-      const s=state.active; if(state.time[s]>0) state.time[s]-=1; $('#timer').textContent=tfmt(state.time[s]);
-      if(state.time[s]===0) changeTurn();
-      if((state.time.A===0&&state.time.B===0)||(sideFinished('A')&&sideFinished('B'))) endGame();
+      if(!state.running||state.paused||state.typing||state.turning||state.finished) return;
+      const s=state.active;
+      if(state.time[s]>0) state.time[s]-=1;
+      $('#timer').textContent=tfmt(state.time[s]);
+
+      if(state.time[s]===0){
+        // Si el otro no puede jugar, el juego termina YA.
+        if(!otherCanPlay(s)){
+          hardStop(); endGame(); return;
+        }
+        // Si el otro sí puede jugar, cambio de turno normal.
+        changeTurn(); return;
+      }
+
+      // Final por doble cero o ambos terminados
+      if((state.time.A===0&&state.time.B===0)||(sideFinished('A')&&sideFinished('B'))) { hardStop(); endGame(); return; }
     },1000);
   }
+
   function startGame(){
     $('#btnStart').style.display='none';
     $('#fieldRow').style.display='block';
@@ -260,51 +367,67 @@
     $('#btnPassBig').style.display='inline-block';
     state.running=true; setClue(); startTimers(); $('#answer').focus(); redraw();
   }
-  function lev(a,b){const m=a.length,n=b.length,dp=new Array(n+1);for(let j=0;j<=n;j++)dp[j]=j;for(let i=1;i<=m;i++){let p=dp[0];dp[0]=i;for(let j=1;j<=n;j++){const t=dp[j];const c=(a[i-1]===b[j-1])?0:1;dp[j]=Math.min(dp[j]+1,dp[j-1]+1,p+c);p=t;}}return dp[n];}
+
+  function lev(a,b){const m=a.length,n=b.length,dp=new Array(n+1);for(let j=0;j<=n;j++)dp[j]=j;
+    for(let i=1;i<=m;i++){let p=dp[0];dp[0]=i;for(let j=1;j<=n;j++){const t=dp[j];const c=(a[i-1]===b[j-1])?0:1;
+      dp[j]=Math.min(dp[j]+1,dp[j-1]+1,p+c);p=t;}}return dp[n];}
   const normAns=s=>norm(s);
-  function correct(item,g){const ans=normAns(item.answer); if(g===ans) return true; for(const alt of item.alt||[]) if(normAns(alt)===g) return true; return (ans.length>=6 && lev(ans,g)<=1);}
+  function correct(item,g){const ans=normAns(item.answer); if(g===ans) return true;
+    for(const alt of item.alt||[]) if(normAns(alt)===g) return true;
+    return (ans.length>=6 && lev(ans,g)<=1);}
+
   function submit(){
-    if(!state.running||state.turning) return;
+    if(!state.running||state.turning||state.finished) return;
     const s=state.active,i=state.idx[s]; if(i===-1){changeTurn();return;}
-    const it=state.rosco[s][i]; const val=norm($('#answer').value); $('#answer').value=''; if(state.typing) toggleTyping(false);
+    const it=state.rosco[s][i]; const val=norm($('#answer').value); $('#answer').value='';
+    if(state.typing) toggleTyping(false);
     if(!val){ pass(); return; }
+
     if(correct(it,val)){
       it.status='ok'; sOK(); $('#feedback').innerHTML='';
-      if(sideFinished(s)){ endGame({forceWinner:s}); return; }
+      if(sideFinished(s)){ hardStop(); endGame({forceWinner:s}); return; }
       state.idx[s]=nextPending(s,i); setClue();
     }else{
-      it.status='bad'; sBAD(); if(state.tts) speak('¡Fallo!');
+      it.status='bad'; sBAD(); speak('¡Fallo!');
       state.idx[s]=nextPending(s,i);
       $('#feedback').innerHTML='Era: <b>'+it.answer+'</b>';
+
+      // Mostrar correcta un momento
       state.turning=true;
       $('#ansText').textContent=it.answer;
       $('#ovAnswer').style.display='grid';
-      setTimeout(()=>{ $('#ovAnswer').style.display='none'; startBreak('Fallo · cambio de turno'); }, 1200);
+
+      const solo = !otherCanPlay(s);
+      setTimeout(()=>{
+        $('#ovAnswer').style.display='none';
+        if(state.finished) return;
+        if(solo){
+          // seguir el mismo jugador sin overlay
+          state.turning=false;
+          setClue(); render(); redraw();
+        }else{
+          startBreak('Fallo · cambio de turno');
+        }
+      },1200);
     }
     render(); redraw();
   }
 
   /* === Pasapalabra con salto suave si solo queda un jugador === */
   function pass(){
-    if(!state.running||state.turning) return;
+    if(!state.running||state.turning||state.finished) return;
     if(state.typing) toggleTyping(false);
     const s=state.active,i=state.idx[s];
-    const other = s==='A' ? 'B' : 'A';
-    const solo = (state.time[other]===0) || sideFinished(other); // el otro ya no juega
+    const solo = !otherCanPlay(s);
+    const nxt = nextPending(s,i);
+    sPASS(); speak('¡Pasapalabra!');
 
-    const nxt = nextPending(s,i); // siguiente letra pendiente del mismo jugador
-    sPASS(); if(state.tts) speak('¡Pasapalabra!');
-
-    // si ya no hay más pendientes y solo queda este jugador → fin
-    if(nxt===-1 && solo){ endGame({forceWinner:s}); return; }
-
+    if(nxt===-1 && solo){ hardStop(); endGame({forceWinner:s}); return; }
     state.idx[s]=nxt;
 
     if(solo){
-      // seguir sin overlay ni cambio de turno
-      setClue(); render(); redraw();
+      setClue(); render(); redraw(); // sin cartel
     }else{
-      // comportamiento normal: cambio de turno con cartel
       startBreak('Pasapalabra · cambio de turno'); render(); redraw();
     }
   }
@@ -312,36 +435,83 @@
   function startBreak(title){ $('#brTitle').textContent=title; $('#ovBreak').style.display='grid'; }
   function changeTurn(){
     $('#feedback').innerHTML='';
-    state.active=(state.active==='A')?'B':'A';
+    state.active=otherOf(state.active);
     state.turning=false;
-    if(state.tts) speak('Turno de '+state.names[state.active]);
-    if(state.time[state.active]===0||state.idx[state.active]===-1){
-      if((state.time.A===0&&state.time.B===0)||(sideFinished('A')&&sideFinished('B'))){ endGame(); return; }
-    } setClue(); render(); redraw();
+    speak('Turno de '+state.names[state.active]);
+    // Si al cambiar el otro no puede jugar, evaluar final por seguridad
+    if(!otherCanPlay(otherOf(state.active)) && state.time[state.active]===0){
+      hardStop(); endGame(); return;
+    }
+    setClue(); render(); redraw();
   }
+
+  function showWin(name){
+    $('#winMsg').textContent='¡Gana '+name+'!';
+    $('#ovWin').style.display='grid';
+    const cv=$('#confetti'); const dpr=window.devicePixelRatio||1;
+    function size(){ cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; cv.style.width='100vw'; cv.style.height='100vh'; }
+    size(); const cx=cv.getContext('2d'); cx.scale(dpr,dpr);
+    const parts=[]; const COLORS=['#ff5c8a','#ffd166','#9bffb0','#6ecbff','#d3a6ff'];
+    for(let i=0;i<180;i++){parts.push({x:Math.random()*innerWidth,y:-20-Math.random()*200,r:4+Math.random()*6,
+      vx:-1+Math.random()*2, vy:2+Math.random()*3, rot:Math.random()*Math.PI, vr:-0.05+Math.random()*0.1,
+      c:COLORS[i%COLORS.length]});}
+    let stop=false;
+    (function loop(){
+      if(stop) return;
+      cx.clearRect(0,0,innerWidth,innerHeight);
+      parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.02; p.rot+=p.vr;
+        cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot);
+        cx.fillStyle=p.c; cx.fillRect(-p.r,-p.r,p.r*2,p.r*2); cx.restore();
+      });
+      requestAnimationFrame(loop);
+    })();
+    setTimeout(()=>{ stop=true; $('#ovWin').style.display='none'; }, 2600);
+  }
+
   function endGame(opts){
-    state.running=false; state.finished=true; if(timer) clearInterval(timer); $('#ovBreak').style.display='none';
-    const Aok=count('A','ok'), Bok=count('B','ok'), Abad=count('A','bad'), Bbad=count('B','bad'); let w=null,detail='';
+    state.finished=true;
+    try{ if('speechSynthesis'in window) speechSynthesis.cancel(); }catch(e){}
+    if(timer) clearInterval(timer);
+    $('#ovBreak').style.display='none';
+    $('#ovAnswer').style.display='none';
+
+    const Aok=count('A','ok'), Bok=count('B','ok'), Abad=count('A','bad'), Bbad=count('B','bad');
+    let w=null,detail='';
     if(opts&&opts.forceWinner){w=opts.forceWinner; detail=' · Completó su rosco';}
-    else{ if(Aok>Bok) w='A'; else if(Bok>Aok) w='B'; else { if(Abad<Bbad) w='A'; else if(Bbad<Abad) w='B'; else w='empate'; } }
-    const R=$('#result'); if(w==='empate'){R.textContent='Empate técnico';}
-    else{ const nm=state.names[w]; R.innerHTML='Gana: <b>'+nm+'</b>'+detail; if(state.tts) speak('Gana '+nm); showWin(nm); }
+    else{
+      if(Aok>Bok) w='A';
+      else if(Bok>Aok) w='B';
+      else { if(Abad<Bbad) w='A'; else if(Bbad<Abad) w='B'; else w='empate'; }
+    }
+    const R=$('#result');
+    if(w==='empate'){R.textContent='Empate técnico';}
+    else{ const nm=state.names[w]; R.innerHTML='Gana: <b>'+nm+'</b>'+detail; speak('Gana '+nm); showWin(nm); }
     updateStats();
   }
 
   /* ===== UI ===== */
-  function toggleTyping(on){state.typing=(typeof on==='boolean')?on:!state.typing; if(state.typing) $('#answer').focus(); $('#answer').classList.toggle('hold',state.typing); scaleCenter();}
-  function togglePause(on){state.paused=(typeof on==='boolean')?on:!state.paused; $('#ovPause').style.display=state.paused?'grid':'none';}
-  $('#btnStart').onclick=function(){unlock(); if(!state.running){ $('#ovCount').style.display='grid'; let n=3; $('#countNum').textContent=n; if(state.tts) speechSynthesis.speak(new SpeechSynthesisUtterance('3'));
-      const id=setInterval(function(){n--; if(n>0){$('#countNum').textContent=n; if(state.tts) speechSynthesis.speak(new SpeechSynthesisUtterance(String(n)));}
-        else{clearInterval(id); $('#ovCount').style.display='none'; startGame();}},1000);} };
+  function toggleTyping(on){state.typing=(typeof on==='boolean')?on:!state.typing;
+    if(state.typing) $('#answer').focus(); $('#answer').classList.toggle('hold',state.typing); scaleCenter();}
+  function togglePause(on){state.paused=(typeof on==='boolean')?on:!state.paused;
+    $('#ovPause').style.display=state.paused?'grid':'none';}
+  $('#btnStart').onclick=function(){
+    unlock(); if(!state.running){
+      $('#ovCount').style.display='grid'; let n=3; $('#countNum').textContent=n; speak('3');
+      const id=setInterval(function(){n--; if(n>0){$('#countNum').textContent=n; speak(String(n));}
+        else{clearInterval(id); $('#ovCount').style.display='none'; startGame();}},1000);
+    }
+  };
   $('#btnAnswer').onclick=function(){unlock(); submit();};
   $('#btnPassBig').onclick=function(){unlock(); pass();};
   $('#btnPause').onclick=function(){unlock(); togglePause();};
   $('#btnResume').onclick=function(){togglePause(false);};
   $('#btnContinue').onclick=function(){ $('#ovBreak').style.display='none'; changeTurn(); };
   $('#btnWrite').onclick=function(){ toggleTyping(); };
-  document.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.ctrlKey){submit();} if(e.key==='Enter'&&e.ctrlKey){pass();} if(e.key==='Escape'){togglePause();} });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!e.ctrlKey){submit();}
+    if(e.key==='Enter'&&e.ctrlKey){pass();}
+    if(e.key==='Escape'){togglePause();}
+  });
 
   const fullRedraw=()=>{redraw();};
   window.addEventListener('resize', fullRedraw);
@@ -351,7 +521,7 @@
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(()=>setTimeout(fullRedraw,50)); }
 
   /* ===== Nombres (localStorage) ===== */
-  const LS_KEY='rosco_names_v37';
+  const LS_KEY='rosco_names_v38';
   function loadNames(){ try{const raw=localStorage.getItem(LS_KEY); if(!raw) return;
       const obj=JSON.parse(raw); if(obj.A) state.names.A=obj.A; if(obj.B) state.names.B=obj.B; }catch(e){} }
   function saveNames(){ try{localStorage.setItem(LS_KEY, JSON.stringify(state.names));}catch(e){} }
@@ -365,31 +535,6 @@
     saveNames(); updateStats(); closeNames();
   };
   $('#btnReset').onclick=function(){ newMatch(); };
-
-  /* ===== Confeti ligero ===== */
-  function showWin(name){
-    $('#winMsg').textContent='¡Gana '+name+'!';
-    $('#ovWin').style.display='grid';
-    const cv=$('#confetti'); const dpr=window.devicePixelRatio||1;
-    function size(){ cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; cv.style.width='100vw'; cv.style.height='100vh'; }
-    size(); const cx=cv.getContext('2d'); cx.scale(dpr,dpr);
-    const parts=[]; const COLORS=['#ff5c8a','#ffd166','#9bffb0','#6ecbff','#d3a6ff'];
-    for(let i=0;i<180;i++){parts.push({x:Math.random()*innerWidth,y:-20-Math.random()*200,r:4+Math.random()*6,
-      vx:-1+Math.random()*2, vy:2+Math.random()*3, rot:Math.random()*Math.PI, vr:-0.05+Math.random()*0.1,
-      c:COLORS[i%COLORS.length]});}
-    let t=0, stop=false;
-    function loop(){
-      if(stop) return; t+=16;
-      cx.clearRect(0,0,innerWidth,innerHeight);
-      parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.02; p.rot+=p.vr;
-        cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot);
-        cx.fillStyle=p.c; cx.fillRect(-p.r,-p.r,p.r*2,p.r*2); cx.restore();
-      });
-      requestAnimationFrame(loop);
-    }
-    loop();
-    setTimeout(()=>{ stop=true; $('#ovWin').style.display='none'; }, 2600);
-  }
 
   /* ===== Nueva partida ===== */
   function buildRoscos(){
